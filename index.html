@@ -57,6 +57,17 @@ body.dim{filter:brightness(.45)}
 .tabs{position:fixed;left:0;right:0;bottom:0;background:rgba(15,23,36,.94);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);display:flex;padding:8px 8px calc(env(safe-area-inset-bottom) + 8px);border-top:1px solid #222d44;z-index:5}
 .tabs button{flex:1;background:none;border:0;color:var(--dim);font-size:12px;padding:4px}
 .tabs button b{display:block;font-size:22px;font-weight:400}
+.wc .it{cursor:pointer}
+.wc .em{font-size:22px;width:34px}
+.wc .ct{flex:1;font-size:16px}
+.wc .ct span{display:block;color:var(--dim);font-size:12px}
+.wc .wt{font-size:26px;font-variant-numeric:tabular-nums;font-weight:300;text-align:right}
+.wc .wt span{display:block;font-size:12px;color:var(--dim)}
+.wgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.wbox{background:var(--card2);border-radius:14px;padding:10px 12px}
+.wbox b{display:block;font-size:13px;color:var(--dim);font-weight:400}
+.wbox i{font-style:normal;font-size:26px;font-weight:300;font-variant-numeric:tabular-nums}
+.wbox small{color:var(--dim);font-size:11px;margin-left:4px}
 .tabs button.on{color:var(--acc)}
 .pg{display:none}.pg.on{display:block}
 label.f{display:block;margin:12px 0 4px;color:var(--dim);font-size:13px}
@@ -101,6 +112,11 @@ input[type=time],input[type=text],input[type=number],select{width:100%;backgroun
     <div class="quote" id="quote"></div>
   </div>
 
+  <div class="card" id="worldCard">
+    <h3>萬國時間 <button id="goWorld">管理</button></h3>
+    <div class="wgrid" id="worldHome"></div>
+  </div>
+
   <div class="card">
     <h3>今日提醒 <button id="goRemind">管理</button></h3>
     <div class="list" id="todayList"></div>
@@ -137,6 +153,17 @@ input[type=time],input[type=text],input[type=number],select{width:100%;backgroun
     <div class="hint">需要在「設定」填入你的 Google OAuth Client ID（Web 應用程式，已授權來源填此網頁網域），並在 Google Cloud 啟用 Calendar API 與 Tasks API。會讀取今天的日曆行程與未完成的待辦，於開始前提醒你。</div>
   </div>
   <div class="card"><h3>今天全部提醒</h3><div class="list" id="remindList"></div></div>
+</div>
+
+<!-- 萬國時間 -->
+<div class="pg" id="pg-world">
+  <div class="card">
+    <h3>新增城市</h3>
+    <select id="wAdd"></select>
+    <div class="row"><button class="btn pri" id="wAddBtn">＋ 加入</button></div>
+    <div class="hint">點城市可以聽語音報時；首頁會顯示前 4 個城市，可用 ▲ 調整順序。</div>
+  </div>
+  <div class="card"><h3>我的城市 <span id="wBase" style="font-size:12px"></span></h3><div class="list wc" id="worldList"></div></div>
 </div>
 
 <!-- 設定 -->
@@ -180,6 +207,7 @@ input[type=time],input[type=text],input[type=number],select{width:100%;backgroun
   <button data-pg="home" class="on"><b>🕰</b>時鐘</button>
   <button data-pg="alarm"><b>⏰</b>鬧鐘</button>
   <button data-pg="remind"><b>📋</b>提醒</button>
+  <button data-pg="world"><b>🌏</b>萬國</button>
   <button data-pg="set"><b>⚙️</b>設定</button>
 </div>
 
@@ -502,6 +530,61 @@ function gSync(){
   });
 }
 
+/* ========== 萬國時間 ========== */
+var WCITY=[
+['Asia/Taipei','台北','台灣'],['Asia/Tokyo','東京','日本'],['Asia/Tokyo|大阪','大阪','日本'],['Asia/Seoul','首爾','韓國'],['Asia/Shanghai','上海','中國'],['Asia/Shanghai|北京','北京','中國'],['Asia/Hong_Kong','香港','中國香港'],['Asia/Macau','澳門','中國澳門'],
+['Asia/Singapore','新加坡','新加坡'],['Asia/Kuala_Lumpur','吉隆坡','馬來西亞'],['Asia/Bangkok','曼谷','泰國'],['Asia/Ho_Chi_Minh','胡志明市','越南'],['Asia/Manila','馬尼拉','菲律賓'],['Asia/Jakarta','雅加達','印尼'],
+['Asia/Kolkata','新德里','印度'],['Asia/Dubai','杜拜','阿聯'],['Europe/Istanbul','伊斯坦堡','土耳其'],['Europe/Moscow','莫斯科','俄羅斯'],
+['Europe/London','倫敦','英國'],['Europe/Paris','巴黎','法國'],['Europe/Berlin','柏林','德國'],['Europe/Rome','羅馬','義大利'],['Europe/Madrid','馬德里','西班牙'],['Europe/Amsterdam','阿姆斯特丹','荷蘭'],['Europe/Zurich','蘇黎世','瑞士'],['Europe/Prague','布拉格','捷克'],
+['Africa/Cairo','開羅','埃及'],['Africa/Johannesburg','約翰尼斯堡','南非'],
+['America/New_York','紐約','美國東岸'],['America/Chicago','芝加哥','美國中部'],['America/Denver','丹佛','美國山區'],['America/Los_Angeles','洛杉磯','美國西岸'],['America/Los_Angeles|舊金山','舊金山','美國西岸'],['America/Anchorage','安克拉治','阿拉斯加'],['Pacific/Honolulu','檀香山','夏威夷'],
+['America/Toronto','多倫多','加拿大'],['America/Vancouver','溫哥華','加拿大'],['America/Mexico_City','墨西哥城','墨西哥'],['America/Sao_Paulo','聖保羅','巴西'],['America/Argentina/Buenos_Aires','布宜諾斯艾利斯','阿根廷'],
+['Australia/Sydney','雪梨','澳洲'],['Australia/Melbourne','墨爾本','澳洲'],['Australia/Brisbane','布里斯本','澳洲'],['Australia/Perth','伯斯','澳洲'],['Pacific/Auckland','奧克蘭','紐西蘭'],['Pacific/Guam','關島','美屬']
+];
+var myCities=load('world',['Asia/Tokyo','America/New_York','Europe/London','America/Los_Angeles']);
+function cityInfo(key){for(var i=0;i<WCITY.length;i++)if(WCITY[i][0]===key)return WCITY[i];return null;}
+var fmtCache={};
+function tzNow(key,d){
+  var tz=key.split('|')[0],f=fmtCache[tz];
+  if(!f){try{f=fmtCache[tz]=new Intl.DateTimeFormat('en-US',{timeZone:tz,year:'numeric',month:'numeric',day:'numeric',hour:'numeric',minute:'numeric',hour12:false});}catch(e){return null;}}
+  var o={},ps;
+  if(f.formatToParts){ps=f.formatToParts(d);ps.forEach(function(p){o[p.type]=p.value;});}
+  else{var m=f.format(d).match(/(\d+)\/(\d+)\/(\d+),?\s*(\d+):(\d+)/);if(!m)return null;o={month:m[1],day:m[2],year:m[3],hour:m[4],minute:m[5]};}
+  var h=(+o.hour)%24,mi=+o.minute;
+  var local=Date.UTC(+o.year,+o.month-1,+o.day,h,mi);
+  var here=Date.UTC(d.getFullYear(),d.getMonth(),d.getDate(),d.getHours(),d.getMinutes());
+  var diffMin=Math.round((local-here)/60000);
+  var dayDiff=Math.round((Date.UTC(+o.year,+o.month-1,+o.day)-Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()))/864e5);
+  return {h:h,m:mi,diff:diffMin,day:dayDiff,month:+o.month,date:+o.day};
+}
+function diffText(t){
+  if(t.diff===0)return '同時區';
+  var a=Math.abs(t.diff),hh=Math.floor(a/60),mm=a%60;
+  return (t.diff>0?'快 ':'慢 ')+(hh?hh+' 小時':'')+(mm?mm+' 分':'');
+}
+function dayText(t){return t.day===0?'今天':t.day===1?'明天':t.day===-1?'昨天':(t.month+'/'+t.date);}
+function dayEmoji(h){return h>=6&&h<17?'☀️':h>=17&&h<19?'🌇':h>=5&&h<6?'🌅':'🌙';}
+function worldSpeech(key){
+  var c=cityInfo(key),t=tzNow(key,new Date());if(!c||!t)return '';
+  var ap=t.h<5?'凌晨':t.h<8?'清晨':t.h<12?'上午':t.h<13?'中午':t.h<18?'下午':'晚上',h12=t.h%12||12;
+  return c[1]+'現在是'+(t.day===0?'':dayText(t))+ap+h12+'點'+(t.m===0?'整':t.m+'分')+'，比台灣'+(t.diff===0?'時間相同':diffText(t).replace('快','快了').replace('慢','慢了'))+'。';
+}
+function renderWorld(){
+  var d=new Date();
+  var home='',list='';
+  myCities.forEach(function(k,i){
+    var c=cityInfo(k),t=tzNow(k,d);if(!c||!t)return;
+    var hm=pad(t.h)+':'+pad(t.m);
+    if(i<4)home+='<div class="wbox" data-ws="'+k+'"><b>'+dayEmoji(t.h)+' '+c[1]+'<small>'+dayText(t)+'</small></b><i>'+hm+'</i><small>'+diffText(t)+'</small></div>';
+    list+='<div class="it" data-ws="'+k+'"><div class="em">'+dayEmoji(t.h)+'</div><div class="ct">'+c[1]+'<span>'+c[2]+'・'+diffText(t)+'</span></div><div class="wt">'+hm+'<span>'+dayText(t)+'</span></div>'+(i?'<button class="x" style="color:var(--dim)" data-wup="'+i+'">▲</button>':'')+'<button class="x" data-wdel="'+i+'">✕</button></div>';
+  });
+  $('worldHome').innerHTML=home;$('worldCard').style.display=home?'':'none';
+  $('worldList').innerHTML=list||'<div class="empty">尚未加入城市</div>';
+}
+function fillWorldSelect(){
+  $('wAdd').innerHTML=WCITY.filter(function(c){return myCities.indexOf(c[0])<0;}).map(function(c){return '<option value="'+c[0]+'">'+c[1]+'（'+c[2]+'）</option>';}).join('');
+}
+
 /* ========== 主迴圈 ========== */
 var lastMin=-1;
 function inQuiet(h){var a=+S.qs,b=+S.qe;if(a===b)return false;return a<b?(h>=a&&h<b):(h>=a||h<b);}
@@ -544,7 +627,7 @@ function tick(){
   if(m%30===0)fetchWx();
   if(m%15===0&&gToken)gSync();
   if(h===0&&m===0){showQuote(dayIndex());}
-  renderNext();renderRemind();
+  renderNext();renderRemind();renderWorld();
 }
 
 /* ========== 響鈴畫面 ========== */
@@ -593,6 +676,19 @@ $('wxRefresh').addEventListener('click',function(){$('wxD').textContent='更新�
 $('qSpeak').addEventListener('click',function(){speak('今日一句：'+quoteText());});
 $('qNext').addEventListener('click',function(){showQuote(qIdx+1);});
 $('goRemind').addEventListener('click',function(){switchPg('remind');});
+$('goWorld').addEventListener('click',function(){switchPg('world');});
+function wsClick(e){var el=e.target.closest('[data-ws]');if(!el||e.target.closest('button'))return;var t=worldSpeech(el.getAttribute('data-ws'));if(t)speak(t);}
+$('worldHome').addEventListener('click',wsClick);
+$('worldList').addEventListener('click',function(e){
+  var del=e.target.getAttribute('data-wdel'),up=e.target.getAttribute('data-wup');
+  if(del!=null){myCities.splice(+del,1);}
+  else if(up!=null){up=+up;var t=myCities[up];myCities[up]=myCities[up-1];myCities[up-1]=t;}
+  else{wsClick(e);return;}
+  save('world',myCities);fillWorldSelect();renderWorld();
+});
+$('wAddBtn').addEventListener('click',function(){
+  var k=$('wAdd').value;if(!k)return;myCities.push(k);save('world',myCities);fillWorldSelect();renderWorld();toast('已加入 '+cityInfo(k)[1]);
+});
 
 $('aDays').addEventListener('click',function(e){var d=e.target.getAttribute('data-d');if(d==null)return;d=+d;var i=selDays.indexOf(d);if(i>=0)selDays.splice(i,1);else selDays.push(d);selDays.sort();renderDays();});
 $('aAdd').addEventListener('click',function(){
@@ -652,7 +748,7 @@ $('snooze').addEventListener('click',function(){
 
 /* ========== 啟動 ========== */
 if(synth){loadVoices();if(synth.onvoiceschanged!==undefined)synth.onvoiceschanged=loadVoices;}
-renderDays();renderAlarms();showQuote(dayIndex());renderWx();renderRemind();
+renderDays();renderAlarms();showQuote(dayIndex());renderWx();renderRemind();fillWorldSelect();renderWorld();$('wBase').textContent='以手機時間為準';
 if(gItems.at)$('gStatus').textContent='上次同步：'+new Date(gItems.at).toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'});
 (function(){var tk=load('gtok',null);if(tk&&tk.exp>Date.now()){gToken=tk.t;}})();
 fetchWx();tick();setInterval(tick,1000);
