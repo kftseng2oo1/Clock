@@ -108,7 +108,7 @@ input[type=time],input[type=text],input[type=number],select{width:100%;backgroun
   </div>
 
   <div class="card">
-    <h3>每日一句 <span><button id="qSpeak">🔊 念給我聽</button> <button id="qNext">換一句</button></span></h3>
+    <h3>每日一句 <span><button id="qAgong">👴 阿公講</button> <button id="qSpeak">🔊 念</button> <button id="qNext">換一句</button></span></h3>
     <div class="quote" id="quote"></div>
   </div>
 
@@ -179,6 +179,7 @@ input[type=time],input[type=text],input[type=number],select{width:100%;backgroun
   </div>
   <div class="card">
     <h3>聲音</h3>
+    <div class="set">說話風格<select id="sStyle"><option value="std">標準播報</option><option value="agong">👴 阿公講古</option><option value="ama">👵 阿嬤叮嚀</option><option value="mix">🎲 隨機輪流</option></select></div>
     <div class="set">語音<select id="sVoice"></select></div>
     <div class="set">語速<select id="sRate"><option value="0.8">慢</option><option value="0.95">稍慢</option><option value="1">正常</option><option value="1.15">稍快</option></select></div>
     <div class="set">音量<select id="sVol"><option value="0.5">小</option><option value="0.8">中</option><option value="1">大</option></select></div>
@@ -247,7 +248,7 @@ function toast(m){var t=$('toast');t.textContent=m;t.className='toast on';clearT
 })();
 
 /* ========== 設定 ========== */
-var S=load('set',{chime:60,qs:22,qe:7,wx:true,cheer:true,bell:true,lead:10,voice:'',rate:0.95,vol:1,city:'auto',gid:'',wake:true});
+var S=load('set',{chime:60,qs:22,qe:7,wx:true,cheer:true,bell:true,lead:10,voice:'',rate:0.95,vol:1,style:'agong',city:'auto',gid:'',wake:true});
 var alarms=load('alarms',[]);
 var reminders=load('rem',[]);   // {id,time,text,date,done}
 var gItems=load('gitems',{date:'',items:[]});
@@ -307,7 +308,53 @@ var CHEER={
 };
 function periodOf(h){return h<5?'night':h<9?'dawn':h<11?'morn':h<14?'noon':h<17?'aft':h<21?'eve':'night';}
 function pick(a){return a[Math.floor(Math.random()*a.length)];}
-function cheer(h){return pick(CHEER[periodOf(h)]);}
+function cheer(h,st){var pool=st==='agong'?AGONG:st==='ama'?AMA:CHEER;return pick(pool[periodOf(h)]);}
+
+/* ===== 說話風格：標準／阿公講古／阿嬤叮嚀 ===== */
+var VSTYLE={std:{pitch:1,rate:1,pause:0},agong:{pitch:0.62,rate:0.84,pause:420},ama:{pitch:1.18,rate:0.9,pause:280}};
+function pickStyle(){var s=S.style||'std';return s==='mix'?pick(['std','agong','ama']):s;}
+var AGONG={
+  dawn:['阿公少年的時候，天還沒亮就起來下田。早起的人啊……日頭都會特別照顧他。','先喝一杯溫開水，再出去走走。身體顧好，什麼都好。','古早人講，一日之計在於晨。今天要做的事，趁早做，就不會趕。'],
+  morn:['以前阿公在田裡，做累了就坐在田埂上喘口氣。你也一樣，做一下，就要歇一下喔。','事情一件一件來，急不得。慢慢做，反而比較快。','你這麼認真，阿公看了真歡喜。'],
+  noon:['中午了，吃飯皇帝大！什麼事都先放著，飯要吃飽喔。','吃飽了，去睏一下午覺。阿公以前在大樹下睏，風吹來……多舒服。','肚子顧好，才有力氣打拚。'],
+  aft:['下午人比較沒精神，來，泡一杯茶，看看窗外，休息一下。','阿公跟你講，路是一步一步走出來的。今天走多少，就算多少。','起來動一動，伸伸腰，骨頭才不會生鏽喔。'],
+  eve:['天暗了，該回家了。一家人圍在一起吃飯，就是最大的福氣。','今天辛苦了。不管順不順利，回到家，就放輕鬆。','打個電話給家裡的人吧，講幾句話，心就暖起來了。'],
+  night:['夜深了，月娘都出來了。手機放下來，早點睏喔。','今天的煩惱，就留給今天。睏一覺起來，又是好天。','阿公以前講，睏飽，才有精神。好好睡，好夢喔。']
+};
+var AMA={
+  dawn:['起床了喔，先喝杯溫開水，外套記得穿。','早餐一定要吃，不吃會沒力氣喔。','新的一天，阿嬤祝你平平安安、順順利利。'],
+  morn:['不要一直坐著，起來走一走，眼睛也休息一下。','水有沒有喝？阿嬤幫你數著喔。','做得很好啦，阿嬤都知道你很認真。'],
+  noon:['中午了，飯要吃飽，青菜也要吃喔。','吃飽睡一下，下午才有精神。','不要吃太快，慢慢吃，胃才會好。'],
+  aft:['下午了，喝口水，吃點水果。','累了就休息一下，不要太勉強自己。','出去曬曬太陽，心情會好很多喔。'],
+  eve:['天暗了，路上小心，早點回家。','晚餐吃清淡一點，身體比較輕鬆。','今天辛苦了，阿嬤給你一個大大的讚。'],
+  night:['很晚了，該睡了喔，被子蓋好，不要著涼。','睡前泡泡腳，一覺到天亮。','好了好了，不要再滑手機了，晚安喔。']
+};
+function openLine(st,h){
+  if(st==='agong')return pick(['來來來，阿公來報時囉。','乖孫啊，聽阿公講喔。','咳咳……阿公看一下時鐘喔。','嘿，阿公跟你講一下時間。']);
+  if(st==='ama')return pick(['乖孫，阿嬤跟你說喔。','寶貝呀，阿嬤來提醒你。','來，阿嬤跟你講。']);
+  return h<11?'早安！':h<18?'午安！':'晚安！';
+}
+function timeSt(d,st){
+  if(st==='agong')return '現在喔……已經是'+timeCore(d)+'囉。';
+  if(st==='ama')return '現在是'+timeCore(d)+'了喔。';
+  return timeWords(d);
+}
+function wxSt(st){
+  if(!WX||st==='std')return wxWords();
+  var t=Math.round(WX.t),s,tip='';
+  if(t<=16)tip=st==='agong'?'，有一點冷，衣服要穿暖一點':'，天氣涼，外套一定要帶';
+  else if(t>=31)tip=st==='agong'?'，天氣真熱，水要多喝':'，好熱喔，記得多喝水、戴帽子';
+  s=(st==='agong'?'外面的天氣是':'今天外面')+WX.desc+'，大概'+t+'度'+tip;
+  if(WX.rain>=50)s+=st==='agong'?'。等一下可能會下雨……雨傘記得帶著':'。可能會下雨，雨傘要帶喔';
+  return s+'。';
+}
+function quoteSt(st){
+  var q=QUOTES[qIdx];
+  if(st==='agong')return '古早人有一句話講：'+q[0]+(q[1]?'……這是'+q[1]+'講的。':'……')+'這句話，你要好好記在心裡喔。';
+  if(st==='ama')return '阿嬤送你一句話：'+q[0]+'。阿嬤覺得很有道理喔。';
+  return '今日一句：'+quoteText();
+}
+function closeLine(st){return st==='agong'?pick(['好啦，阿公講到這裡。','','']):'';}
 
 var qIdx;
 function dayIndex(){var d=new Date();var s=new Date(d.getFullYear(),0,0);return Math.floor((d-s)/864e5);}
@@ -330,19 +377,21 @@ function bestVoice(){
   for(i=0;i<voices.length;i++)if(/zh/i.test(voices[i].lang))return voices[i];
   return null;
 }
-function speak(text,cb){
+function speak(text,cb,st){
   if(!synth){if(cb)cb();return;}
   synth.cancel();
-  // 分句念，避免 iOS 長句被截斷
-  var parts=text.replace(/([。！？!?])/g,'$1\n').split('\n');
+  var vs=VSTYLE[st||'std']||VSTYLE.std;
+  // 分句念，避免 iOS 長句被截斷；「……」處停頓，像在講古
+  var parts=text.replace(/([。！？!?]|……)/g,'$1\n').split('\n');
   var idx=0;$('speakNow').className='speaking';
   function next(){
     if(idx>=parts.length){$('speakNow').className='';if(cb)cb();return;}
     var p=parts[idx++].trim();if(!p){next();return;}
+    if(/^[。！？!?…\s]+$/.test(p)){setTimeout(next,600);return;}
     var u=new SpeechSynthesisUtterance(p);
     var v=bestVoice();if(v){u.voice=v;u.lang=v.lang;}else u.lang='zh-TW';
-    u.rate=+S.rate;u.volume=+S.vol;u.pitch=1;
-    u.onend=next;u.onerror=next;
+    u.rate=Math.max(0.5,+S.rate*vs.rate);u.volume=+S.vol;u.pitch=vs.pitch;
+    u.onend=function(){if(vs.pause)setTimeout(next,vs.pause+(/……$/.test(p)?400:0));else next();};u.onerror=next;
     synth.speak(u);
   }
   next();
@@ -374,17 +423,25 @@ function timeWords(d){
   var h12=h%12;if(h12===0)h12=12;
   return '現在時間，'+ap+h12+'點'+(m===0?'整':m===30?'半':m+'分')+'。';
 }
+function timeCore(d){
+  var h=d.getHours(),m=d.getMinutes();
+  var ap=h<5?'凌晨':h<8?'清晨':h<12?'上午':h<13?'中午':h<18?'下午':'晚上';
+  var h12=h%12;if(h12===0)h12=12;
+  return ap+h12+'點'+(m===0?'整':m===30?'半':m+'分');
+}
 function wxWords(){
   if(!WX)return '';
   return '外面'+WX.desc+'，氣溫'+Math.round(WX.t)+'度，今天'+Math.round(WX.lo)+'到'+Math.round(WX.hi)+'度'+(WX.rain>=50?'，降雨機率'+WX.rain+'%，出門記得帶傘':'')+'。';
 }
 function announce(withQuote){
   var d=new Date();
-  var s=timeWords(d);
-  if(S.wx)s+=wxWords();
-  if(S.cheer)s+=cheer(d.getHours());
-  if(withQuote)s+='今日一句：'+quoteText();
-  bell(2,function(){speak(s);});
+  var st=pickStyle(),h=d.getHours();
+  var s=(st==='std'?'':openLine(st,h))+timeSt(d,st);
+  if(S.wx)s+=wxSt(st);
+  if(S.cheer)s+=cheer(h,st);
+  if(withQuote)s+=quoteSt(st);
+  s+=closeLine(st);
+  bell(2,function(){speak(s,null,st);});
 }
 
 /* ========== 天氣 (Open-Meteo, 免金鑰) ========== */
@@ -616,7 +673,8 @@ function tick(){
     if(lhm!==hm||!fireKey('R'+x.key))return;
     busy=true;
     var msg=(+S.lead?'提醒您，'+S.lead+'分鐘後，'+x.time+'，':'提醒您，現在是'+x.time+'，')+x.text+'。';
-    toast('🔔 '+x.text);bell(3,function(){speak(msg);});
+    var st=pickStyle();if(st==='agong')msg='乖孫，阿公提醒你喔……'+msg;else if(st==='ama')msg='寶貝，阿嬤提醒你，'+msg+'不要忘記喔。';
+    toast('🔔 '+x.text);bell(3,function(){speak(msg,null,st);});
   });
 
   // 報時
@@ -631,18 +689,19 @@ function tick(){
 }
 
 /* ========== 響鈴畫面 ========== */
-var snoozeAt=null,curAlarm=null;
+var snoozeAt=null,curAlarm=null,ringStyle='std';
 function ring(label,a){
   curAlarm=a;
   var d=new Date();
   $('ringTime').textContent=pad(d.getHours())+':'+pad(d.getMinutes());
   var h=d.getHours();
-  var txt=(h<11?'早安！':h<18?'午安！':'晚安！')+label+'時間到了。'+timeWords(d)+wxWords()+cheer(h);
-  if(h<11)txt+='今日一句：'+quoteText();
+  var st=pickStyle();ringStyle=st;
+  var txt=openLine(st,h)+(st==='agong'?label+'的時間到囉！':st==='ama'?label+'的時間到了喔！':label+'時間到了。')+timeSt(d,st)+wxSt(st)+cheer(h,st);
+  if(h<11)txt+=quoteSt(st);
   $('ringText').textContent=txt;
   $('ringOv').className='ov on';
   ringLoop();
-  setTimeout(function(){if(ringTimer){clearInterval(ringTimer);ringTimer=null;}speak(txt);},6600);
+  setTimeout(function(){if(ringTimer){clearInterval(ringTimer);ringTimer=null;}speak(txt,null,ringStyle);},6600);
 }
 function stopRing(){if(ringTimer){clearInterval(ringTimer);ringTimer=null;}if(synth)synth.cancel();$('ringOv').className='ov';}
 
@@ -668,16 +727,18 @@ $('startBtn').addEventListener('click',function(){
   try{audioCtx=new (window.AudioContext||window.webkitAudioContext)();audioCtx.resume();}catch(e){}
   unlocked=true;$('startOv').className='ov';wake();
   var d=new Date();
-  speak((d.getHours()<11?'早安！':d.getHours()<18?'午安！':'晚安！')+timeWords(d)+wxWords()+cheer(d.getHours()));
+  var st=pickStyle();
+  speak(openLine(st,d.getHours())+timeSt(d,st)+wxSt(st)+cheer(d.getHours(),st),null,st);
 });
 $('speakNow').addEventListener('click',function(){announce(true);});
 $('dimBtn').addEventListener('click',function(){document.body.classList.toggle('dim');});
 $('wxRefresh').addEventListener('click',function(){$('wxD').textContent='更新中…';fetchWx();});
-$('qSpeak').addEventListener('click',function(){speak('今日一句：'+quoteText());});
+$('qSpeak').addEventListener('click',function(){var st=pickStyle();speak(quoteSt(st),null,st);});
+$('qAgong').addEventListener('click',function(){speak(quoteSt('agong'),null,'agong');});
 $('qNext').addEventListener('click',function(){showQuote(qIdx+1);});
 $('goRemind').addEventListener('click',function(){switchPg('remind');});
 $('goWorld').addEventListener('click',function(){switchPg('world');});
-function wsClick(e){var el=e.target.closest('[data-ws]');if(!el||e.target.closest('button'))return;var t=worldSpeech(el.getAttribute('data-ws'));if(t)speak(t);}
+function wsClick(e){var el=e.target.closest('[data-ws]');if(!el||e.target.closest('button'))return;var t=worldSpeech(el.getAttribute('data-ws'));if(t){var st=pickStyle();speak(t,null,st);}}
 $('worldHome').addEventListener('click',wsClick);
 $('worldList').addEventListener('click',function(e){
   var del=e.target.getAttribute('data-wdel'),up=e.target.getAttribute('data-wup');
@@ -734,14 +795,14 @@ $('snooze').addEventListener('click',function(){
   for(i=0;i<24;i++){o=document.createElement('option');o.value=i;o.textContent=pad(i)+':00';qs.appendChild(o);qe.appendChild(o.cloneNode(true));}
   CITIES.forEach(function(c){o=document.createElement('option');o.value=c[0];o.textContent=c[1];$('sCity').appendChild(o);});
   $('sChime').value=S.chime;qs.value=S.qs;qe.value=S.qe;$('sWx').checked=S.wx;$('sCheer').checked=S.cheer;$('sBell').checked=S.bell;
-  $('sLead').value=S.lead;$('sRate').value=S.rate;$('sVol').value=S.vol;$('sCity').value=S.city;$('sGid').value=S.gid;$('sWake').checked=S.wake;
+  $('sLead').value=S.lead;$('sRate').value=S.rate;$('sStyle').value=S.style||'std';$('sVol').value=S.vol;$('sCity').value=S.city;$('sGid').value=S.gid;$('sWake').checked=S.wake;
   function upd(){
     var oldCity=S.city;
     S.chime=+$('sChime').value;S.qs=+qs.value;S.qe=+qe.value;S.wx=$('sWx').checked;S.cheer=$('sCheer').checked;S.bell=$('sBell').checked;
-    S.lead=+$('sLead').value;S.voice=$('sVoice').value;S.rate=+$('sRate').value;S.vol=+$('sVol').value;S.city=$('sCity').value;S.gid=$('sGid').value.trim();S.wake=$('sWake').checked;
+    S.lead=+$('sLead').value;S.voice=$('sVoice').value;S.rate=+$('sRate').value;S.style=$('sStyle').value;S.vol=+$('sVol').value;S.city=$('sCity').value;S.gid=$('sGid').value.trim();S.wake=$('sWake').checked;
     save('set',S);if(oldCity!==S.city)fetchWx();if(S.wake)wake();else if(wakeLock){wakeLock.release();wakeLock=null;}
   }
-  var ids=['sChime','sQs','sQe','sWx','sCheer','sBell','sLead','sVoice','sRate','sVol','sCity','sGid','sWake'];
+  var ids=['sStyle','sChime','sQs','sQe','sWx','sCheer','sBell','sLead','sVoice','sRate','sVol','sCity','sGid','sWake'];
   ids.forEach(function(id){$(id).addEventListener('change',upd);});
   $('sTest').addEventListener('click',function(){upd();announce(false);});
 })();
