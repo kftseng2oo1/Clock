@@ -108,8 +108,9 @@ input[type=time],input[type=text],input[type=number],select{width:100%;backgroun
   </div>
 
   <div class="card">
-    <h3>每日一句 <span><button id="qAgong">👴 阿公講古</button> <button id="qSpeak">🔊 念</button> <button id="qNext">換一句</button></span></h3>
+    <h3>每日一句 <span><button id="qVoice">🔄 換人聲</button> <button id="qSpeak">🔊 念</button> <button id="qNext">換一句</button></span></h3>
     <div class="quote" id="quote"></div>
+    <div class="hint" id="qVoiceName" style="margin-top:6px"></div>
   </div>
 
   <div class="card" id="worldCard">
@@ -180,10 +181,13 @@ input[type=time],input[type=text],input[type=number],select{width:100%;backgroun
   <div class="card">
     <h3>聲音</h3>
     <div class="set">說話風格<select id="sStyle"><option value="std">標準播報</option><option value="agong">👴 阿公講古</option><option value="ama">👵 阿嬤叮嚀</option><option value="mix">🎲 隨機輪流</option></select></div>
-    <div class="set">語音<select id="sVoice"></select></div>
+    <div class="set">人聲<select id="sVsrc"><option value="female">曉臻・溫柔女聲</option><option value="female2">曉雨・活潑女聲</option><option value="male">雲哲・沉穩男聲</option><option value="agong">👴 阿公（AI 聲音）</option></select></div>
+    <div id="agongBox" style="display:none"><label class="f">阿公聲音通行碼（和「阿公說故事」App 填的一樣）</label><input type="text" id="sVtoken" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="arcar 沒設 VOICE_TOKEN 就留空"></div>
+    <div class="set">離線備用語音<select id="sVoice"></select></div>
     <div class="set">語速<select id="sRate"><option value="0.8">慢</option><option value="0.95">稍慢</option><option value="1">正常</option><option value="1.15">稍快</option></select></div>
     <div class="set">音量<select id="sVol"><option value="0.5">小</option><option value="0.8">中</option><option value="1">大</option></select></div>
     <div class="row"><button class="btn" id="sTest">試聽</button></div>
+    <div class="hint">人聲由 arcar 雲端產生，和早安卡片 App 同一套聲音；沒有網路或失敗時，會自動改用手機內建語音。</div>
   </div>
   <div class="card">
     <h3>天氣地點</h3>
@@ -248,7 +252,7 @@ function toast(m){var t=$('toast');t.textContent=m;t.className='toast on';clearT
 })();
 
 /* ========== 設定 ========== */
-var S=load('set',{chime:60,qs:22,qe:7,wx:true,cheer:true,bell:true,lead:10,voice:'',rate:0.95,vol:1,style:'agong',city:'auto',gid:'',wake:true});
+var S=load('set',{chime:60,qs:22,qe:7,wx:true,cheer:true,bell:true,lead:10,voice:'',rate:0.95,vol:1,style:'agong',vsrc:'female',vtoken:'',city:'auto',gid:'',wake:true});
 var alarms=load('alarms',[]);
 var reminders=load('rem',[]);   // {id,time,text,date,done}
 var gItems=load('gitems',{date:'',items:[]});
@@ -377,14 +381,60 @@ function bestVoice(){
   for(i=0;i<voices.length;i++)if(/zh/i.test(voices[i].lang))return voices[i];
   return null;
 }
+/* ===== 雲端人聲（arcar /tts，與早安卡片同一套） ===== */
+var PROXY='https://arcar.kftseng2oo1.workers.dev';
+var VOICES=[['female','曉臻・溫柔女聲'],['female2','曉雨・活潑女聲'],['male','雲哲・沉穩男聲'],['agong','👴 阿公（AI 聲音）']];
+function voiceName(v){for(var i=0;i<VOICES.length;i++)if(VOICES[i][0]===v)return VOICES[i][1];return '手機內建語音';}
+function showVoiceName(){var e=$('qVoiceName');if(e)e.textContent='目前人聲：'+voiceName(S.vsrc);}
+var ttsCache={},ttsKeys=[],curSrc=null,speakSeq=0;
+function stopSpeech(){speakSeq++;if(curSrc){try{curSrc.stop();}catch(e){}curSrc=null;}if(synth)synth.cancel();$('speakNow').className='';}
+function cloudTTS(text,st,ok,fail){
+  var v=S.vsrc;
+  if(!audioCtx||!v||navigator.onLine===false){fail();return;}
+  var rate=Math.round((+S.rate-1)*100)-(st==='agong'?10:st==='ama'?5:0);
+  var key=v+'|'+rate+'|'+text;
+  if(ttsCache[key]){ok(ttsCache[key]);return;}
+  var x=new XMLHttpRequest();
+  x.open('POST',PROXY+'/tts');x.setRequestHeader('Content-Type','application/json');
+  x.responseType='arraybuffer';x.timeout=15000;
+  x.onload=function(){
+    var ct=x.getResponseHeader('Content-Type')||'';
+    if(x.status!==200||ct.indexOf('json')>=0){fail();return;}
+    var fell=v==='agong'&&(x.getResponseHeader('X-TTS-Engine')||'')!=='agong';
+    if(fell){var n='';try{n=decodeURIComponent(x.getResponseHeader('X-TTS-Note')||'');}catch(e){}n=(n.match(/agong: ([^|]*)/)||[,''])[1];toast('阿公聲音沒成功'+(n?'（'+n.trim()+'）':'')+'，先用男聲');}
+    var done=false;
+    function got(buf){if(done)return;done=true;if(!fell){ttsCache[key]=buf;ttsKeys.push(key);if(ttsKeys.length>30)delete ttsCache[ttsKeys.shift()];}ok(buf);}
+    function bad(){if(!done){done=true;fail();}}
+    try{var pr=audioCtx.decodeAudioData(x.response,got,bad);if(pr&&pr.then)pr.then(got,bad);}catch(e){bad();}
+  };
+  x.onerror=x.ontimeout=fail;
+  var body={text:text,voice:v,rate:rate};if(v==='agong')body.token=S.vtoken||'';
+  x.send(JSON.stringify(body));
+}
 function speak(text,cb,st){
+  stopSpeech();
+  var seq=speakSeq;$('speakNow').className='speaking';
+  cloudTTS(text.replace(/([。！？])……/g,'$1').replace(/……/g,'，'),st,function(buf){
+    if(seq!==speakSeq)return;
+    try{
+      if(audioCtx.state==='suspended')audioCtx.resume();
+      var src=audioCtx.createBufferSource(),g=audioCtx.createGain();
+      src.buffer=buf;g.gain.value=+S.vol;src.connect(g);g.connect(audioCtx.destination);
+      src.onended=function(){if(curSrc===src){curSrc=null;$('speakNow').className='';if(cb)cb();}};
+      curSrc=src;src.start(0);
+    }catch(e){speakDevice(text,cb,st);}
+  },function(){if(seq===speakSeq)speakDevice(text,cb,st);});
+}
+function speakDevice(text,cb,st){
   if(!synth){if(cb)cb();return;}
   synth.cancel();
   var vs=VSTYLE[st||'std']||VSTYLE.std;
+  var seq=speakSeq;
   // 分句念，避免 iOS 長句被截斷；「……」處停頓，像在講古
   var parts=text.replace(/([。！？!?]|……)/g,'$1\n').split('\n');
   var idx=0;$('speakNow').className='speaking';
   function next(){
+    if(seq!==speakSeq)return;
     if(idx>=parts.length){$('speakNow').className='';if(cb)cb();return;}
     var p=parts[idx++].trim();if(!p){next();return;}
     if(/^[。！？!?…\s]+$/.test(p)){setTimeout(next,600);return;}
@@ -703,7 +753,7 @@ function ring(label,a){
   ringLoop();
   setTimeout(function(){if(ringTimer){clearInterval(ringTimer);ringTimer=null;}speak(txt,null,ringStyle);},6600);
 }
-function stopRing(){if(ringTimer){clearInterval(ringTimer);ringTimer=null;}if(synth)synth.cancel();$('ringOv').className='ov';}
+function stopRing(){if(ringTimer){clearInterval(ringTimer);ringTimer=null;}stopSpeech();$('ringOv').className='ov';}
 
 /* ========== 螢幕常亮 ========== */
 var wakeLock=null;
@@ -734,7 +784,12 @@ $('speakNow').addEventListener('click',function(){announce(true);});
 $('dimBtn').addEventListener('click',function(){document.body.classList.toggle('dim');});
 $('wxRefresh').addEventListener('click',function(){$('wxD').textContent='更新中…';fetchWx();});
 $('qSpeak').addEventListener('click',function(){var st=pickStyle();speak(quoteSt(st),null,st);});
-$('qAgong').addEventListener('click',function(){speak(quoteSt('agong'),null,'agong');});
+$('qVoice').addEventListener('click',function(){
+  var i=0;for(var k=0;k<VOICES.length;k++)if(VOICES[k][0]===S.vsrc)i=k;
+  S.vsrc=VOICES[(i+1)%VOICES.length][0];save('set',S);$('sVsrc').value=S.vsrc;$('agongBox').style.display=S.vsrc==='agong'?'block':'none';
+  showVoiceName();toast('換成 '+voiceName(S.vsrc));
+  var st=S.vsrc==='agong'?'agong':pickStyle();speak(quoteSt(st),null,st);
+});
 $('qNext').addEventListener('click',function(){showQuote(qIdx+1);});
 $('goRemind').addEventListener('click',function(){switchPg('remind');});
 $('goWorld').addEventListener('click',function(){switchPg('world');});
@@ -795,21 +850,21 @@ $('snooze').addEventListener('click',function(){
   for(i=0;i<24;i++){o=document.createElement('option');o.value=i;o.textContent=pad(i)+':00';qs.appendChild(o);qe.appendChild(o.cloneNode(true));}
   CITIES.forEach(function(c){o=document.createElement('option');o.value=c[0];o.textContent=c[1];$('sCity').appendChild(o);});
   $('sChime').value=S.chime;qs.value=S.qs;qe.value=S.qe;$('sWx').checked=S.wx;$('sCheer').checked=S.cheer;$('sBell').checked=S.bell;
-  $('sLead').value=S.lead;$('sRate').value=S.rate;$('sStyle').value=S.style||'std';$('sVol').value=S.vol;$('sCity').value=S.city;$('sGid').value=S.gid;$('sWake').checked=S.wake;
+  $('sLead').value=S.lead;$('sRate').value=S.rate;$('sVsrc').value=S.vsrc||'female';$('sVtoken').value=S.vtoken||'';$('agongBox').style.display=S.vsrc==='agong'?'block':'none';$('sStyle').value=S.style||'std';$('sVol').value=S.vol;$('sCity').value=S.city;$('sGid').value=S.gid;$('sWake').checked=S.wake;
   function upd(){
     var oldCity=S.city;
     S.chime=+$('sChime').value;S.qs=+qs.value;S.qe=+qe.value;S.wx=$('sWx').checked;S.cheer=$('sCheer').checked;S.bell=$('sBell').checked;
-    S.lead=+$('sLead').value;S.voice=$('sVoice').value;S.rate=+$('sRate').value;S.style=$('sStyle').value;S.vol=+$('sVol').value;S.city=$('sCity').value;S.gid=$('sGid').value.trim();S.wake=$('sWake').checked;
+    S.lead=+$('sLead').value;S.voice=$('sVoice').value;S.rate=+$('sRate').value;S.vsrc=$('sVsrc').value;S.vtoken=$('sVtoken').value.trim();$('agongBox').style.display=S.vsrc==='agong'?'block':'none';showVoiceName();S.style=$('sStyle').value;S.vol=+$('sVol').value;S.city=$('sCity').value;S.gid=$('sGid').value.trim();S.wake=$('sWake').checked;
     save('set',S);if(oldCity!==S.city)fetchWx();if(S.wake)wake();else if(wakeLock){wakeLock.release();wakeLock=null;}
   }
-  var ids=['sStyle','sChime','sQs','sQe','sWx','sCheer','sBell','sLead','sVoice','sRate','sVol','sCity','sGid','sWake'];
+  var ids=['sVsrc','sVtoken','sStyle','sChime','sQs','sQe','sWx','sCheer','sBell','sLead','sVoice','sRate','sVol','sCity','sGid','sWake'];
   ids.forEach(function(id){$(id).addEventListener('change',upd);});
   $('sTest').addEventListener('click',function(){upd();announce(false);});
 })();
 
 /* ========== 啟動 ========== */
 if(synth){loadVoices();if(synth.onvoiceschanged!==undefined)synth.onvoiceschanged=loadVoices;}
-renderDays();renderAlarms();showQuote(dayIndex());renderWx();renderRemind();fillWorldSelect();renderWorld();$('wBase').textContent='以手機時間為準';
+renderDays();renderAlarms();showQuote(dayIndex());renderWx();renderRemind();fillWorldSelect();renderWorld();showVoiceName();$('wBase').textContent='以手機時間為準';
 if(gItems.at)$('gStatus').textContent='上次同步：'+new Date(gItems.at).toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'});
 (function(){var tk=load('gtok',null);if(tk&&tk.exp>Date.now()){gToken=tk.t;}})();
 fetchWx();tick();setInterval(tick,1000);
