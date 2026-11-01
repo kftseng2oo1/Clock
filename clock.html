@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="暖心時鐘">
+<meta name="theme-color" content="#0f1724">
+<title>暖心時鐘</title>
+<link id="manifestLink" rel="manifest">
+<style>
+:root{--bg:#0f1724;--card:#182235;--card2:#1f2b42;--fg:#f4efe6;--dim:#9aa6bb;--acc:#ffb35c;--acc2:#7fd1c7;--warn:#ff7a6b;--r:18px}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--fg);font-family:-apple-system,"PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif}
+body{padding:calc(env(safe-area-inset-top) + 14px) 16px calc(env(safe-area-inset-bottom) + 90px);min-height:100vh}
+body.dim{filter:brightness(.45)}
+.wrap{max-width:640px;margin:0 auto}
+.top{display:flex;justify-content:space-between;align-items:center;color:var(--dim);font-size:15px}
+.top button{background:none;border:0;color:var(--dim);font-size:22px;padding:6px}
+.clock{text-align:center;margin:18px 0 6px}
+.time{font-size:min(24vw,128px);font-weight:200;letter-spacing:-2px;line-height:1;font-variant-numeric:tabular-nums}
+.time small{font-size:.32em;color:var(--dim);letter-spacing:0;margin-left:4px}
+.date{color:var(--dim);font-size:17px;margin-top:8px}
+.next{color:var(--acc);font-size:14px;margin-top:6px;min-height:18px}
+.card{background:var(--card);border-radius:var(--r);padding:16px 18px;margin-top:14px}
+.card h3{margin:0 0 10px;font-size:14px;color:var(--dim);font-weight:500;display:flex;justify-content:space-between;align-items:center}
+.card h3 button{background:var(--card2);border:0;color:var(--fg);border-radius:10px;padding:5px 10px;font-size:13px}
+.wx{display:flex;align-items:center;gap:14px}
+.wx .ic{font-size:46px}
+.wx .t{font-size:42px;font-weight:300}
+.wx .d{color:var(--dim);font-size:14px;line-height:1.6}
+.quote{font-size:19px;line-height:1.7}
+.quote .by{display:block;color:var(--dim);font-size:13px;margin-top:6px}
+.row{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.btn{background:var(--card2);color:var(--fg);border:0;border-radius:12px;padding:10px 14px;font-size:15px}
+.btn.pri{background:var(--acc);color:#2a1a05;font-weight:600}
+.btn.sm{padding:6px 10px;font-size:13px}
+.list .it{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-top:1px solid #26324a}
+.list .it:first-child{border-top:0}
+.list .tm{font-size:22px;font-variant-numeric:tabular-nums;min-width:68px}
+.list .lb{flex:1;padding:0 10px;font-size:15px}
+.list .lb span{display:block;color:var(--dim);font-size:12px}
+.list .off{opacity:.4}
+.empty{color:var(--dim);font-size:14px}
+.tag{font-size:11px;background:#2b3a58;color:var(--acc2);border-radius:6px;padding:1px 6px;margin-right:4px}
+.sw{position:relative;width:46px;height:28px;flex:none}
+.sw input{display:none}
+.sw i{position:absolute;inset:0;background:#33405a;border-radius:20px;transition:.2s}
+.sw i:after{content:"";position:absolute;left:3px;top:3px;width:22px;height:22px;background:#fff;border-radius:50%;transition:.2s}
+.sw input:checked+i{background:var(--acc2)}
+.sw input:checked+i:after{left:21px}
+.x{background:none;border:0;color:var(--warn);font-size:18px;padding:4px 6px}
+.tabs{position:fixed;left:0;right:0;bottom:0;background:rgba(15,23,36,.94);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);display:flex;padding:8px 8px calc(env(safe-area-inset-bottom) + 8px);border-top:1px solid #222d44;z-index:5}
+.tabs button{flex:1;background:none;border:0;color:var(--dim);font-size:12px;padding:4px}
+.tabs button b{display:block;font-size:22px;font-weight:400}
+.tabs button.on{color:var(--acc)}
+.pg{display:none}.pg.on{display:block}
+label.f{display:block;margin:12px 0 4px;color:var(--dim);font-size:13px}
+input[type=time],input[type=text],input[type=number],select{width:100%;background:var(--card2);border:1px solid #2c3a56;color:var(--fg);border-radius:12px;padding:11px 12px;font-size:16px;-webkit-appearance:none;appearance:none}
+.days{display:flex;gap:6px;margin-top:6px}
+.days span{flex:1;text-align:center;background:var(--card2);border-radius:10px;padding:8px 0;font-size:14px;color:var(--dim)}
+.days span.on{background:var(--acc2);color:#062420;font-weight:600}
+.set{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-top:1px solid #26324a;font-size:15px}
+.set:first-of-type{border-top:0}
+.set select{width:auto;min-width:120px;padding:8px 10px;font-size:14px}
+.hint{color:var(--dim);font-size:12px;line-height:1.6;margin-top:8px}
+.ov{position:fixed;inset:0;background:rgba(8,12,20,.92);display:none;align-items:center;justify-content:center;flex-direction:column;text-align:center;padding:30px;z-index:20}
+.ov.on{display:flex}
+.ov h2{font-size:56px;font-weight:200;margin:0}
+.ov p{font-size:19px;line-height:1.7;max-width:480px;color:var(--fg)}
+.ov .row{justify-content:center}
+.toast{position:fixed;left:50%;bottom:110px;transform:translateX(-50%);background:#2b3a58;color:#fff;padding:10px 16px;border-radius:12px;font-size:14px;opacity:0;transition:.3s;pointer-events:none;z-index:30}
+.toast.on{opacity:1}
+.speaking{animation:pulse 1.2s infinite}
+@keyframes pulse{50%{opacity:.5}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- 首頁 -->
+<div class="pg on" id="pg-home">
+  <div class="top"><span id="loc">📍 定位中…</span><span><button id="dimBtn" title="夜間調暗">🌙</button><button id="speakNow" title="立即報時">🔊</button></span></div>
+  <div class="clock">
+    <div class="time" id="time">--:--<small id="sec">--</small></div>
+    <div class="date" id="date"></div>
+    <div class="next" id="nextInfo"></div>
+  </div>
+
+  <div class="card">
+    <h3>今日天氣 <button id="wxRefresh">更新</button></h3>
+    <div class="wx"><div class="ic" id="wxIc">⛅</div><div class="t" id="wxT">--°</div><div class="d" id="wxD">載入中…</div></div>
+  </div>
+
+  <div class="card">
+    <h3>每日一句 <span><button id="qSpeak">🔊 念給我聽</button> <button id="qNext">換一句</button></span></h3>
+    <div class="quote" id="quote"></div>
+  </div>
+
+  <div class="card">
+    <h3>今日提醒 <button id="goRemind">管理</button></h3>
+    <div class="list" id="todayList"></div>
+  </div>
+</div>
+
+<!-- 鬧鐘 -->
+<div class="pg" id="pg-alarm">
+  <div class="card">
+    <h3>新增鬧鐘</h3>
+    <input type="time" id="aTime" value="07:00">
+    <label class="f">名稱</label>
+    <input type="text" id="aLabel" placeholder="例如：起床、吃藥、散步">
+    <label class="f">重複（都不選＝只響一次）</label>
+    <div class="days" id="aDays"></div>
+    <div class="row"><button class="btn pri" id="aAdd">＋ 加入鬧鐘</button></div>
+  </div>
+  <div class="card"><h3>我的鬧鐘</h3><div class="list" id="alarmList"></div></div>
+</div>
+
+<!-- 提醒 -->
+<div class="pg" id="pg-remind">
+  <div class="card">
+    <h3>新增提醒</h3>
+    <input type="time" id="rTime" value="15:00">
+    <label class="f">要提醒什麼</label>
+    <input type="text" id="rText" placeholder="例如：打電話給媽媽">
+    <div class="row"><button class="btn pri" id="rAdd">＋ 加入今天提醒</button></div>
+  </div>
+  <div class="card">
+    <h3>Google 日曆／工作 <span><button id="gSync">同步</button></span></h3>
+    <div id="gStatus" class="empty">尚未連結 Google</div>
+    <div class="row"><button class="btn" id="gConnect">連結 Google 帳號</button><button class="btn" id="gOut">登出</button></div>
+    <div class="hint">需要在「設定」填入你的 Google OAuth Client ID（Web 應用程式，已授權來源填此網頁網域），並在 Google Cloud 啟用 Calendar API 與 Tasks API。會讀取今天的日曆行程與未完成的待辦，於開始前提醒你。</div>
+  </div>
+  <div class="card"><h3>今天全部提醒</h3><div class="list" id="remindList"></div></div>
+</div>
+
+<!-- 設定 -->
+<div class="pg" id="pg-set">
+  <div class="card">
+    <h3>報時</h3>
+    <div class="set">報時頻率<select id="sChime"><option value="0">關閉</option><option value="60">每整點</option><option value="30">每半小時</option><option value="15">每 15 分鐘</option></select></div>
+    <div class="set">安靜時段（不報時）<span><select id="sQs"></select> – <select id="sQe"></select></span></div>
+    <div class="set">報時附帶天氣<label class="sw"><input type="checkbox" id="sWx"><i></i></label></div>
+    <div class="set">報時附帶打氣旁白<label class="sw"><input type="checkbox" id="sCheer"><i></i></label></div>
+    <div class="set">報時前提示音<label class="sw"><input type="checkbox" id="sBell"><i></i></label></div>
+    <div class="set">提醒提前幾分鐘<select id="sLead"><option value="0">準時</option><option value="5">5 分鐘</option><option value="10">10 分鐘</option><option value="15">15 分鐘</option><option value="30">30 分鐘</option></select></div>
+  </div>
+  <div class="card">
+    <h3>聲音</h3>
+    <div class="set">語音<select id="sVoice"></select></div>
+    <div class="set">語速<select id="sRate"><option value="0.8">慢</option><option value="0.95">稍慢</option><option value="1">正常</option><option value="1.15">稍快</option></select></div>
+    <div class="set">音量<select id="sVol"><option value="0.5">小</option><option value="0.8">中</option><option value="1">大</option></select></div>
+    <div class="row"><button class="btn" id="sTest">試聽</button></div>
+  </div>
+  <div class="card">
+    <h3>天氣地點</h3>
+    <div class="set">地點<select id="sCity"></select></div>
+    <div class="hint">選「自動定位」會使用手機 GPS；定位失敗時改用台北。</div>
+  </div>
+  <div class="card">
+    <h3>Google 連結</h3>
+    <label class="f">OAuth Client ID</label>
+    <input type="text" id="sGid" placeholder="xxxx.apps.googleusercontent.com">
+  </div>
+  <div class="card">
+    <h3>螢幕</h3>
+    <div class="set">保持螢幕常亮<label class="sw"><input type="checkbox" id="sWake"><i></i></label></div>
+    <div class="hint">iPhone 鎖定螢幕或切到別的 App 時，網頁無法發出聲音。想要準時報時，請把手機放在充電座上、開著這個畫面。</div>
+  </div>
+</div>
+
+</div>
+
+<div class="tabs">
+  <button data-pg="home" class="on"><b>🕰</b>時鐘</button>
+  <button data-pg="alarm"><b>⏰</b>鬧鐘</button>
+  <button data-pg="remind"><b>📋</b>提醒</button>
+  <button data-pg="set"><b>⚙️</b>設定</button>
+</div>
+
+<div class="ov on" id="startOv">
+  <div style="font-size:60px">🌤</div>
+  <p>早安！我是你的暖心時鐘。<br>點一下開始，讓我可以幫你報時和說話。</p>
+  <div class="row"><button class="btn pri" id="startBtn">開始使用</button></div>
+</div>
+
+<div class="ov" id="ringOv">
+  <h2 id="ringTime">07:00</h2>
+  <p id="ringText"></p>
+  <div class="row"><button class="btn" id="snooze">再睡 5 分鐘</button><button class="btn pri" id="ringStop">好，我起來了</button></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+'use strict';
+
+/* ========== 基本工具 ========== */
+function $(id){return document.getElementById(id);}
+function pad(n){return (n<10?'0':'')+n;}
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function ymd(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());}
+function load(k,def){try{var v=localStorage.getItem('wc_'+k);return v?JSON.parse(v):def;}catch(e){return def;}}
+function save(k,v){try{localStorage.setItem('wc_'+k,JSON.stringify(v));}catch(e){}}
+var toastT;
+function toast(m){var t=$('toast');t.textContent=m;t.className='toast on';clearTimeout(toastT);toastT=setTimeout(function(){t.className='toast';},2200);}
+
+/* inline manifest */
+(function(){
+  var icon='data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="110" fill="#0f1724"/><circle cx="256" cy="256" r="170" fill="none" stroke="#ffb35c" stroke-width="28"/><path d="M256 150v110l70 50" stroke="#f4efe6" stroke-width="28" stroke-linecap="round" fill="none"/></svg>');
+  var m={name:'暖心時鐘',short_name:'暖心時鐘',start_url:location.href.split('#')[0],display:'standalone',background_color:'#0f1724',theme_color:'#0f1724',icons:[{src:icon,sizes:'512x512',type:'image/svg+xml'}]};
+  $('manifestLink').href='data:application/manifest+json,'+encodeURIComponent(JSON.stringify(m));
+  var a=document.createElement('link');a.rel='apple-touch-icon';a.href=icon;document.head.appendChild(a);
+})();
+
+/* ========== 設定 ========== */
+var S=load('set',{chime:60,qs:22,qe:7,wx:true,cheer:true,bell:true,lead:10,voice:'',rate:0.95,vol:1,city:'auto',gid:'',wake:true});
+var alarms=load('alarms',[]);
+var reminders=load('rem',[]);   // {id,time,text,date,done}
+var gItems=load('gitems',{date:'',items:[]});
+var fired=load('fired',{});     // key->1 for today
+var WEEK=['日','一','二','三','四','五','六'];
+
+/* ========== 語錄與旁白 ========== */
+var QUOTES=[
+['慢慢來，比較快。','台灣俗語'],
+['今天的你，已經比昨天多走了一步。',''],
+['天天都是好日子。','雲門禪師'],
+['千里之行，始於足下。','老子'],
+['知足者富。','老子'],
+['學而時習之，不亦說乎。','論語'],
+['德不孤，必有鄰。','論語'],
+['日日是好日，步步是道場。',''],
+['心若安定，處處都是晴天。',''],
+['把小事做好，就是了不起的事。',''],
+['先照顧好自己，才能好好照顧別人。',''],
+['笑一笑，煩惱少一少。',''],
+['水滴石穿，不是力量大，是功夫深。',''],
+['人生沒有白走的路，每一步都算數。',''],
+['今天也辛苦了，記得喝杯水、伸伸腰。',''],
+['山不轉路轉，路不轉人轉。','台灣俗語'],
+['吃飯皇帝大，好好吃飯就是福氣。','台灣俗語'],
+['一枝草，一點露。','台灣俗語'],
+['海納百川，有容乃大。','林則徐'],
+['行到水窮處，坐看雲起時。','王維'],
+['莫愁前路無知己，天下誰人不識君。','高適'],
+['長風破浪會有時，直掛雲帆濟滄海。','李白'],
+['春有百花秋有月，夏有涼風冬有雪。','無門慧開'],
+['若無閒事掛心頭，便是人間好時節。','無門慧開'],
+['好好睡一覺，明天又是新的開始。',''],
+['不必和別人比，和昨天的自己比就好。',''],
+['今天說一句謝謝，世界就溫柔一點。',''],
+['身體動一動，心情亮一亮。',''],
+['做得到的先做，做不到的先放著。',''],
+['平安就是最大的財富。',''],
+['好心情是可以練習的。',''],
+['陽光總在風雨後。',''],
+['再小的進步，也值得為自己鼓掌。',''],
+['家人的一通電話，勝過千言萬語。',''],
+['今天的煩惱，就交給今天的自己就好。',''],
+['走出去曬曬太陽，身體會謝謝你。',''],
+['每一個清晨，都是生命送你的禮物。',''],
+['有空多笑，有閒多走，有話好好說。',''],
+['不急不躁，一切剛剛好。',''],
+['人生如茶，靜心以對，自有清香。','']
+];
+var CHEER={
+  dawn:['新的一天開始了，深呼吸，你已經準備好了。','早起的你最棒了，先喝杯溫開水，讓身體醒過來吧。','今天一定會有好事發生，帶著笑容出發吧！'],
+  morn:['上午精神最好，先把最重要的一件事完成吧。','記得起來走一走，伸伸懶腰，肩膀放輕鬆。','你做得很好，繼續保持這個節奏。'],
+  noon:['中午了，好好吃頓飯，吃飽才有力氣。','休息一下，閉上眼睛十分鐘，下午會更有精神。','辛苦了一個上午，給自己一個讚。'],
+  aft:['下午容易累，喝口水、看看遠方，讓眼睛休息一下。','再撐一下，今天的努力都會有收穫。','出去曬曬太陽，走走路，心情會變好喔。'],
+  eve:['傍晚了，今天辛苦了，好好犒賞自己一頓晚餐。','打個電話給想念的人吧，聽聽他們的聲音。','不管今天順不順利，你都已經很努力了。'],
+  night:['夜深了，放下手機，讓眼睛和心都休息吧。','今天的事今天放下，明天又是新的開始，晚安。','泡個熱水腳，好好睡一覺，祝你好夢。']
+};
+function periodOf(h){return h<5?'night':h<9?'dawn':h<11?'morn':h<14?'noon':h<17?'aft':h<21?'eve':'night';}
+function pick(a){return a[Math.floor(Math.random()*a.length)];}
+function cheer(h){return pick(CHEER[periodOf(h)]);}
+
+var qIdx;
+function dayIndex(){var d=new Date();var s=new Date(d.getFullYear(),0,0);return Math.floor((d-s)/864e5);}
+function showQuote(i){qIdx=(i+QUOTES.length)%QUOTES.length;var q=QUOTES[qIdx];$('quote').innerHTML=esc(q[0])+(q[1]?'<span class="by">— '+esc(q[1])+'</span>':'');}
+function quoteText(){var q=QUOTES[qIdx];return q[0]+(q[1]?'，這句話來自'+q[1]+'。':'');}
+
+/* ========== 語音 ========== */
+var synth=window.speechSynthesis,voices=[],audioCtx=null,unlocked=false;
+function loadVoices(){
+  if(!synth)return;
+  voices=synth.getVoices().filter(function(v){return /zh|cmn|yue/i.test(v.lang);});
+  var sel=$('sVoice');sel.innerHTML='<option value="">自動（中文）</option>';
+  voices.forEach(function(v){var o=document.createElement('option');o.value=v.name;o.textContent=v.name+' ('+v.lang+')';sel.appendChild(o);});
+  sel.value=S.voice||'';
+}
+function bestVoice(){
+  var i;
+  if(S.voice){for(i=0;i<voices.length;i++)if(voices[i].name===S.voice)return voices[i];}
+  for(i=0;i<voices.length;i++)if(/zh[-_]TW/i.test(voices[i].lang))return voices[i];
+  for(i=0;i<voices.length;i++)if(/zh/i.test(voices[i].lang))return voices[i];
+  return null;
+}
+function speak(text,cb){
+  if(!synth){if(cb)cb();return;}
+  synth.cancel();
+  // 分句念，避免 iOS 長句被截斷
+  var parts=text.replace(/([。！？!?])/g,'$1\n').split('\n');
+  var idx=0;$('speakNow').className='speaking';
+  function next(){
+    if(idx>=parts.length){$('speakNow').className='';if(cb)cb();return;}
+    var p=parts[idx++].trim();if(!p){next();return;}
+    var u=new SpeechSynthesisUtterance(p);
+    var v=bestVoice();if(v){u.voice=v;u.lang=v.lang;}else u.lang='zh-TW';
+    u.rate=+S.rate;u.volume=+S.vol;u.pitch=1;
+    u.onend=next;u.onerror=next;
+    synth.speak(u);
+  }
+  next();
+}
+function bell(n,cb){
+  if(!S.bell||!audioCtx){if(cb)cb();return;}
+  try{
+    var t=audioCtx.currentTime,notes=n===2?[880,660]:[660,880,1320];
+    notes.forEach(function(f,i){
+      var o=audioCtx.createOscillator(),g=audioCtx.createGain();
+      o.type='sine';o.frequency.value=f;
+      g.gain.setValueAtTime(0,t+i*.45);g.gain.linearRampToValueAtTime(.35*S.vol,t+i*.45+.02);g.gain.exponentialRampToValueAtTime(.001,t+i*.45+1.2);
+      o.connect(g);g.connect(audioCtx.destination);o.start(t+i*.45);o.stop(t+i*.45+1.3);
+    });
+    setTimeout(function(){if(cb)cb();},notes.length*450+500);
+  }catch(e){if(cb)cb();}
+}
+var ringTimer=null;
+function ringLoop(){
+  if(!audioCtx)return;
+  function once(){var keepBell=S.bell;S.bell=true;bell(3);S.bell=keepBell;}
+  once();ringTimer=setInterval(once,2200);
+}
+
+/* ========== 報時文字 ========== */
+function timeWords(d){
+  var h=d.getHours(),m=d.getMinutes();
+  var ap=h<5?'凌晨':h<8?'清晨':h<12?'上午':h<13?'中午':h<18?'下午':'晚上';
+  var h12=h%12;if(h12===0)h12=12;
+  return '現在時間，'+ap+h12+'點'+(m===0?'整':m===30?'半':m+'分')+'。';
+}
+function wxWords(){
+  if(!WX)return '';
+  return '外面'+WX.desc+'，氣溫'+Math.round(WX.t)+'度，今天'+Math.round(WX.lo)+'到'+Math.round(WX.hi)+'度'+(WX.rain>=50?'，降雨機率'+WX.rain+'%，出門記得帶傘':'')+'。';
+}
+function announce(withQuote){
+  var d=new Date();
+  var s=timeWords(d);
+  if(S.wx)s+=wxWords();
+  if(S.cheer)s+=cheer(d.getHours());
+  if(withQuote)s+='今日一句：'+quoteText();
+  bell(2,function(){speak(s);});
+}
+
+/* ========== 天氣 (Open-Meteo, 免金鑰) ========== */
+var CITIES=[['auto','自動定位'],['25.04,121.56','台北'],['25.01,121.46','新北'],['24.99,121.30','桃園'],['24.80,120.97','新竹'],['24.15,120.67','台中'],['23.48,120.45','嘉義'],['22.99,120.21','台南'],['22.63,120.30','高雄'],['24.75,121.75','宜蘭'],['23.99,121.60','花蓮'],['22.76,121.14','台東'],['23.57,119.58','澎湖'],['24.43,118.32','金門']];
+var WMAP={0:['晴朗','☀️'],1:['大致晴朗','🌤'],2:['多雲','⛅'],3:['陰天','☁️'],45:['有霧','🌫'],48:['有霧','🌫'],51:['毛毛雨','🌦'],53:['毛毛雨','🌦'],55:['毛毛雨','🌦'],61:['小雨','🌧'],63:['下雨','🌧'],65:['大雨','🌧'],66:['凍雨','🌧'],67:['凍雨','🌧'],71:['下雪','🌨'],73:['下雪','🌨'],75:['大雪','❄️'],80:['陣雨','🌦'],81:['陣雨','🌧'],82:['強陣雨','⛈'],95:['雷雨','⛈'],96:['雷雨','⛈'],99:['強雷雨','⛈']};
+var WX=load('wx',null);
+function getCoords(cb){
+  if(S.city!=='auto'){var p=S.city.split(',');var n='';CITIES.forEach(function(c){if(c[0]===S.city)n=c[1];});cb(+p[0],+p[1],n);return;}
+  if(!navigator.geolocation){cb(25.04,121.56,'台北');return;}
+  var done=false;
+  var tm=setTimeout(function(){if(!done){done=true;cb(25.04,121.56,'台北');}},8000);
+  navigator.geolocation.getCurrentPosition(function(pos){if(done)return;done=true;clearTimeout(tm);cb(pos.coords.latitude,pos.coords.longitude,'目前位置');},function(){if(done)return;done=true;clearTimeout(tm);cb(25.04,121.56,'台北');},{timeout:7000,maximumAge:1800000});
+}
+function fetchWx(){
+  getCoords(function(lat,lon,name){
+    $('loc').textContent='📍 '+name;
+    var url='https://api.open-meteo.com/v1/forecast?latitude='+lat+'&longitude='+lon+'&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto&forecast_days=1';
+    var x=new XMLHttpRequest();x.open('GET',url);x.timeout=12000;
+    x.onload=function(){
+      try{
+        var j=JSON.parse(x.responseText),c=j.current,w=WMAP[c.weather_code]||['天氣多變','🌈'];
+        WX={t:c.temperature_2m,feel:c.apparent_temperature,hum:c.relative_humidity_2m,desc:w[0],ic:w[1],hi:j.daily.temperature_2m_max[0],lo:j.daily.temperature_2m_min[0],rain:j.daily.precipitation_probability_max[0]||0,at:Date.now(),name:name};
+        save('wx',WX);renderWx();
+      }catch(e){$('wxD').textContent='天氣資料讀取失敗';}
+    };
+    x.onerror=x.ontimeout=function(){$('wxD').textContent='無法連線取得天氣'+(WX?'（顯示上次資料）':'');};
+    x.send();
+  });
+}
+function renderWx(){
+  if(!WX)return;
+  $('wxIc').textContent=WX.ic;$('wxT').textContent=Math.round(WX.t)+'°';
+  $('wxD').innerHTML=esc(WX.desc)+'　體感 '+Math.round(WX.feel)+'°<br>'+Math.round(WX.lo)+'° – '+Math.round(WX.hi)+'°　💧'+WX.rain+'%　濕度 '+WX.hum+'%';
+}
+
+/* ========== 鬧鐘 ========== */
+var selDays=[];
+function renderDays(){
+  $('aDays').innerHTML=WEEK.map(function(w,i){return '<span data-d="'+i+'" class="'+(selDays.indexOf(i)>=0?'on':'')+'">'+w+'</span>';}).join('');
+}
+function daysText(a){if(!a.days.length)return '一次';if(a.days.length===7)return '每天';if(a.days.join()==='1,2,3,4,5')return '平日';if(a.days.join()==='0,6')return '週末';return '週'+a.days.map(function(d){return WEEK[d];}).join('、');}
+function renderAlarms(){
+  alarms.sort(function(a,b){return a.time<b.time?-1:1;});
+  $('alarmList').innerHTML=alarms.length?alarms.map(function(a){
+    return '<div class="it'+(a.on?'':' off')+'"><div class="tm">'+a.time+'</div><div class="lb">'+esc(a.label||'鬧鐘')+'<span>'+daysText(a)+'</span></div><label class="sw"><input type="checkbox" data-tg="'+a.id+'"'+(a.on?' checked':'')+'><i></i></label><button class="x" data-del="'+a.id+'">✕</button></div>';
+  }).join(''):'<div class="empty">還沒有鬧鐘</div>';
+  save('alarms',alarms);renderNext();
+}
+function nextAlarm(){
+  var now=new Date(),best=null;
+  alarms.forEach(function(a){
+    if(!a.on)return;
+    var hm=a.time.split(':');
+    for(var k=0;k<8;k++){
+      var d=new Date(now.getFullYear(),now.getMonth(),now.getDate()+k,+hm[0],+hm[1],0);
+      if(d<=now)continue;
+      if(a.days.length&&a.days.indexOf(d.getDay())<0)continue;
+      if(!best||d<best.d)best={d:d,a:a};break;
+    }
+  });
+  return best;
+}
+function renderNext(){
+  var n=nextAlarm();
+  if(!n){$('nextInfo').textContent='';return;}
+  var mins=Math.round((n.d-new Date())/60000),h=Math.floor(mins/60),m=mins%60;
+  $('nextInfo').textContent='⏰ 下個鬧鐘 '+n.a.time+'（'+(h?h+' 小時 ':'')+m+' 分鐘後）';
+}
+
+/* ========== 提醒（本機 + Google） ========== */
+function todayItems(){
+  var t=ymd(new Date()),out=[];
+  reminders.forEach(function(r){if(r.date===t)out.push({key:'L'+r.id,time:r.time,text:r.text,src:'local',id:r.id,done:r.done});});
+  if(gItems.date===t)gItems.items.forEach(function(g){out.push({key:'G'+g.id,time:g.time,text:g.text,src:g.src});});
+  out.sort(function(a,b){return (a.time||'99')<(b.time||'99')?-1:1;});
+  return out;
+}
+function itemRow(x,canDel){
+  var tg=x.src==='cal'?'<span class="tag">日曆</span>':x.src==='task'?'<span class="tag">待辦</span>':'';
+  return '<div class="it'+(x.done?' off':'')+'"><div class="tm">'+(x.time||'全天')+'</div><div class="lb">'+tg+esc(x.text)+'</div>'+(canDel&&x.src==='local'?'<button class="x" data-rdel="'+x.id+'">✕</button>':'')+'</div>';
+}
+function renderRemind(){
+  var items=todayItems(),nowHM=pad(new Date().getHours())+':'+pad(new Date().getMinutes());
+  var upcoming=items.filter(function(x){return !x.time||x.time>=nowHM;});
+  $('todayList').innerHTML=upcoming.length?upcoming.slice(0,6).map(function(x){return itemRow(x,false);}).join(''):'<div class="empty">今天接下來沒有提醒，好好享受吧 ☕</div>';
+  $('remindList').innerHTML=items.length?items.map(function(x){return itemRow(x,true);}).join(''):'<div class="empty">今天沒有提醒</div>';
+}
+
+/* Google Identity Services */
+var gToken=null,gisLoaded=false,tokenClient=null;
+function loadGis(cb){
+  if(gisLoaded){cb();return;}
+  var s=document.createElement('script');s.src='https://accounts.google.com/gsi/client';s.async=true;
+  s.onload=function(){gisLoaded=true;cb();};
+  s.onerror=function(){toast('無法載入 Google 登入');};
+  document.head.appendChild(s);
+}
+function gConnect(){
+  if(!S.gid){toast('請先到「設定」填入 Google Client ID');switchPg('set');return;}
+  loadGis(function(){
+    tokenClient=google.accounts.oauth2.initTokenClient({
+      client_id:S.gid,
+      scope:'https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/tasks.readonly',
+      callback:function(r){
+        if(r.error){$('gStatus').textContent='連結失敗：'+r.error;return;}
+        gToken=r.access_token;save('gtok',{t:gToken,exp:Date.now()+(r.expires_in-60)*1000});
+        gSync();
+      }
+    });
+    tokenClient.requestAccessToken({prompt:''});
+  });
+}
+function gGet(url,cb){
+  var x=new XMLHttpRequest();x.open('GET',url);x.setRequestHeader('Authorization','Bearer '+gToken);
+  x.onload=function(){if(x.status===401){gToken=null;save('gtok',null);$('gStatus').textContent='登入已過期，請重新連結';cb(null);return;}try{cb(JSON.parse(x.responseText));}catch(e){cb(null);}};
+  x.onerror=function(){cb(null);};x.send();
+}
+function gSync(){
+  if(!gToken){var tk=load('gtok',null);if(tk&&tk.exp>Date.now())gToken=tk.t;}
+  if(!gToken){gConnect();return;}
+  $('gStatus').textContent='同步中…';
+  var d=new Date(),s=new Date(d.getFullYear(),d.getMonth(),d.getDate()),e=new Date(s.getTime()+864e5);
+  var items=[],pending=2;
+  function fin(){
+    if(--pending)return;
+    gItems={date:ymd(d),items:items,at:Date.now()};save('gitems',gItems);
+    $('gStatus').textContent='✅ 已同步 '+items.length+' 筆（'+pad(d.getHours())+':'+pad(d.getMinutes())+'）';
+    renderRemind();
+  }
+  gGet('https://www.googleapis.com/calendar/v3/calendars/primary/events?singleEvents=true&orderBy=startTime&timeMin='+encodeURIComponent(s.toISOString())+'&timeMax='+encodeURIComponent(e.toISOString()),function(j){
+    if(j&&j.items)j.items.forEach(function(ev){
+      var tm='';if(ev.start&&ev.start.dateTime){var t=new Date(ev.start.dateTime);tm=pad(t.getHours())+':'+pad(t.getMinutes());}
+      items.push({id:ev.id,time:tm,text:ev.summary||'（無標題行程）',src:'cal'});
+    });
+    fin();
+  });
+  gGet('https://tasks.googleapis.com/tasks/v1/lists/@default/tasks?showCompleted=false&maxResults=50',function(j){
+    if(j&&j.items)j.items.forEach(function(t){
+      if(t.due&&t.due.slice(0,10)>ymd(d))return;
+      items.push({id:t.id,time:'',text:t.title||'待辦事項',src:'task'});
+    });
+    fin();
+  });
+}
+
+/* ========== 主迴圈 ========== */
+var lastMin=-1;
+function inQuiet(h){var a=+S.qs,b=+S.qe;if(a===b)return false;return a<b?(h>=a&&h<b):(h>=a||h<b);}
+function fireKey(k){var t=ymd(new Date());if(fired[k]===t)return false;fired[k]=t;save('fired',fired);return true;}
+function tick(){
+  var d=new Date(),h=d.getHours(),m=d.getMinutes();
+  $('time').innerHTML=pad(h)+':'+pad(m)+'<small>'+pad(d.getSeconds())+'</small>';
+  $('date').textContent=(d.getMonth()+1)+'月'+d.getDate()+'日　星期'+WEEK[d.getDay()];
+  if(m===lastMin)return;
+  lastMin=m;
+  if(!unlocked){renderNext();return;}
+  var hm=pad(h)+':'+pad(m),busy=false;
+
+  // 鬧鐘
+  alarms.forEach(function(a){
+    if(busy||!a.on||a.time!==hm)return;
+    if(a.days.length&&a.days.indexOf(d.getDay())<0)return;
+    if(!fireKey('A'+a.id+hm))return;
+    busy=true;ring(a.label||'鬧鐘',a);
+    if(!a.days.length){a.on=false;renderAlarms();}
+  });
+  if(snoozeAt&&snoozeAt===hm&&!busy){busy=true;snoozeAt=null;ring('再睡一下時間到了',null);}
+
+  // 提醒
+  if(!busy)todayItems().forEach(function(x){
+    if(busy||!x.time||x.done)return;
+    var p=x.time.split(':'),t=new Date(d.getFullYear(),d.getMonth(),d.getDate(),+p[0],+p[1]-(+S.lead));
+    var lhm=pad(t.getHours())+':'+pad(t.getMinutes());
+    if(lhm!==hm||!fireKey('R'+x.key))return;
+    busy=true;
+    var msg=(+S.lead?'提醒您，'+S.lead+'分鐘後，'+x.time+'，':'提醒您，現在是'+x.time+'，')+x.text+'。';
+    toast('🔔 '+x.text);bell(3,function(){speak(msg);});
+  });
+
+  // 報時
+  var c=+S.chime;
+  if(!busy&&c&&m%c===0&&!inQuiet(h)&&!document.hidden){
+    announce(m===0&&(h===8||h===12||h===19));  // 早上8點、中午、晚上7點順便念每日一句
+  }
+  if(m%30===0)fetchWx();
+  if(m%15===0&&gToken)gSync();
+  if(h===0&&m===0){showQuote(dayIndex());}
+  renderNext();renderRemind();
+}
+
+/* ========== 響鈴畫面 ========== */
+var snoozeAt=null,curAlarm=null;
+function ring(label,a){
+  curAlarm=a;
+  var d=new Date();
+  $('ringTime').textContent=pad(d.getHours())+':'+pad(d.getMinutes());
+  var h=d.getHours();
+  var txt=(h<11?'早安！':h<18?'午安！':'晚安！')+label+'時間到了。'+timeWords(d)+wxWords()+cheer(h);
+  if(h<11)txt+='今日一句：'+quoteText();
+  $('ringText').textContent=txt;
+  $('ringOv').className='ov on';
+  ringLoop();
+  setTimeout(function(){if(ringTimer){clearInterval(ringTimer);ringTimer=null;}speak(txt);},6600);
+}
+function stopRing(){if(ringTimer){clearInterval(ringTimer);ringTimer=null;}if(synth)synth.cancel();$('ringOv').className='ov';}
+
+/* ========== 螢幕常亮 ========== */
+var wakeLock=null;
+function wake(){
+  if(!S.wake||!('wakeLock' in navigator))return;
+  navigator.wakeLock.request('screen').then(function(w){wakeLock=w;}).catch(function(){});
+}
+document.addEventListener('visibilitychange',function(){if(!document.hidden){wake();lastMin=-1;tick();}});
+
+/* ========== 分頁 ========== */
+function switchPg(p){
+  var bs=document.querySelectorAll('.tabs button');
+  for(var i=0;i<bs.length;i++)bs[i].className=bs[i].getAttribute('data-pg')===p?'on':'';
+  var ps=document.querySelectorAll('.pg');for(i=0;i<ps.length;i++)ps[i].className='pg';
+  $('pg-'+p).className='pg on';window.scrollTo(0,0);
+}
+
+/* ========== 綁定事件 ========== */
+document.querySelector('.tabs').addEventListener('click',function(e){var b=e.target.closest('button');if(b)switchPg(b.getAttribute('data-pg'));});
+$('startBtn').addEventListener('click',function(){
+  try{audioCtx=new (window.AudioContext||window.webkitAudioContext)();audioCtx.resume();}catch(e){}
+  unlocked=true;$('startOv').className='ov';wake();
+  var d=new Date();
+  speak((d.getHours()<11?'早安！':d.getHours()<18?'午安！':'晚安！')+timeWords(d)+wxWords()+cheer(d.getHours()));
+});
+$('speakNow').addEventListener('click',function(){announce(true);});
+$('dimBtn').addEventListener('click',function(){document.body.classList.toggle('dim');});
+$('wxRefresh').addEventListener('click',function(){$('wxD').textContent='更新中…';fetchWx();});
+$('qSpeak').addEventListener('click',function(){speak('今日一句：'+quoteText());});
+$('qNext').addEventListener('click',function(){showQuote(qIdx+1);});
+$('goRemind').addEventListener('click',function(){switchPg('remind');});
+
+$('aDays').addEventListener('click',function(e){var d=e.target.getAttribute('data-d');if(d==null)return;d=+d;var i=selDays.indexOf(d);if(i>=0)selDays.splice(i,1);else selDays.push(d);selDays.sort();renderDays();});
+$('aAdd').addEventListener('click',function(){
+  var t=$('aTime').value;if(!t){toast('請選時間');return;}
+  alarms.push({id:Date.now(),time:t,label:$('aLabel').value.trim(),days:selDays.slice(),on:true});
+  $('aLabel').value='';selDays=[];renderDays();renderAlarms();toast('已加入 '+t+' 鬧鐘');
+});
+$('alarmList').addEventListener('click',function(e){
+  var del=e.target.getAttribute('data-del');
+  if(del){alarms=alarms.filter(function(a){return String(a.id)!==del;});renderAlarms();}
+});
+$('alarmList').addEventListener('change',function(e){
+  var id=e.target.getAttribute('data-tg');if(!id)return;
+  alarms.forEach(function(a){if(String(a.id)===id)a.on=e.target.checked;});renderAlarms();
+});
+
+$('rAdd').addEventListener('click',function(){
+  var t=$('rTime').value,x=$('rText').value.trim();
+  if(!t||!x){toast('請填時間和內容');return;}
+  reminders=reminders.filter(function(r){return r.date>=ymd(new Date());});
+  reminders.push({id:Date.now(),time:t,text:x,date:ymd(new Date()),done:false});
+  save('rem',reminders);$('rText').value='';renderRemind();toast('已加入提醒');
+});
+$('remindList').addEventListener('click',function(e){
+  var id=e.target.getAttribute('data-rdel');if(!id)return;
+  reminders=reminders.filter(function(r){return String(r.id)!==id;});save('rem',reminders);renderRemind();
+});
+$('gConnect').addEventListener('click',gConnect);
+$('gSync').addEventListener('click',gSync);
+$('gOut').addEventListener('click',function(){
+  if(gToken&&window.google&&google.accounts)google.accounts.oauth2.revoke(gToken,function(){});
+  gToken=null;save('gtok',null);gItems={date:'',items:[]};save('gitems',gItems);$('gStatus').textContent='已登出';renderRemind();
+});
+
+$('ringStop').addEventListener('click',stopRing);
+$('snooze').addEventListener('click',function(){
+  stopRing();var t=new Date(Date.now()+5*60000);snoozeAt=pad(t.getHours())+':'+pad(t.getMinutes());toast('5 分鐘後再叫你 😴');
+});
+
+/* 設定頁 */
+(function(){
+  var qs=$('sQs'),qe=$('sQe'),i,o;
+  for(i=0;i<24;i++){o=document.createElement('option');o.value=i;o.textContent=pad(i)+':00';qs.appendChild(o);qe.appendChild(o.cloneNode(true));}
+  CITIES.forEach(function(c){o=document.createElement('option');o.value=c[0];o.textContent=c[1];$('sCity').appendChild(o);});
+  $('sChime').value=S.chime;qs.value=S.qs;qe.value=S.qe;$('sWx').checked=S.wx;$('sCheer').checked=S.cheer;$('sBell').checked=S.bell;
+  $('sLead').value=S.lead;$('sRate').value=S.rate;$('sVol').value=S.vol;$('sCity').value=S.city;$('sGid').value=S.gid;$('sWake').checked=S.wake;
+  function upd(){
+    var oldCity=S.city;
+    S.chime=+$('sChime').value;S.qs=+qs.value;S.qe=+qe.value;S.wx=$('sWx').checked;S.cheer=$('sCheer').checked;S.bell=$('sBell').checked;
+    S.lead=+$('sLead').value;S.voice=$('sVoice').value;S.rate=+$('sRate').value;S.vol=+$('sVol').value;S.city=$('sCity').value;S.gid=$('sGid').value.trim();S.wake=$('sWake').checked;
+    save('set',S);if(oldCity!==S.city)fetchWx();if(S.wake)wake();else if(wakeLock){wakeLock.release();wakeLock=null;}
+  }
+  var ids=['sChime','sQs','sQe','sWx','sCheer','sBell','sLead','sVoice','sRate','sVol','sCity','sGid','sWake'];
+  ids.forEach(function(id){$(id).addEventListener('change',upd);});
+  $('sTest').addEventListener('click',function(){upd();announce(false);});
+})();
+
+/* ========== 啟動 ========== */
+if(synth){loadVoices();if(synth.onvoiceschanged!==undefined)synth.onvoiceschanged=loadVoices;}
+renderDays();renderAlarms();showQuote(dayIndex());renderWx();renderRemind();
+if(gItems.at)$('gStatus').textContent='上次同步：'+new Date(gItems.at).toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'});
+(function(){var tk=load('gtok',null);if(tk&&tk.exp>Date.now()){gToken=tk.t;}})();
+fetchWx();tick();setInterval(tick,1000);
+})();
+</script>
+</body>
+</html>
