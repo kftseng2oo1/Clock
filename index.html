@@ -21,7 +21,21 @@ body.dim{filter:brightness(.45)}
 .wrap{max-width:640px;margin:0 auto}
 .top{display:flex;justify-content:space-between;align-items:center;color:var(--dim);font-size:15px}
 .top button{background:none;border:0;color:var(--dim);font-size:22px;padding:6px}
-.clock{text-align:center;margin:18px 0 6px}
+.clock{text-align:center;margin:14px 0 6px;position:relative;border-radius:24px;overflow:hidden;padding:26px 10px 92px;min-height:270px;cursor:pointer}
+.clock>*{position:relative;z-index:1}
+.clock canvas,#amb canvas{position:absolute!important;left:0;top:0;width:100%;height:100%;z-index:0!important;display:block}
+.clock .time,.clock .date,.clock .next{text-shadow:0 2px 12px rgba(0,0,0,.45)}
+.clock .date{color:#fff;opacity:.92}
+.time.flip{animation:flip .5s ease}
+@keyframes flip{0%{transform:translateY(-10px);opacity:.3}100%{transform:none;opacity:1}}
+.tapHint{position:absolute;right:12px;bottom:10px;font-size:11px;color:rgba(255,255,255,.7);z-index:1}
+#amb{position:fixed;inset:0;z-index:15;display:none;color:#fff;text-align:center;overflow:hidden}
+#amb.on{display:block}
+#amb .at{position:relative;z-index:1;margin-top:calc(env(safe-area-inset-top) + 8vh);font-size:min(28vw,26vh);font-weight:200;letter-spacing:-3px;line-height:1;font-variant-numeric:tabular-nums;text-shadow:0 4px 24px rgba(0,0,0,.4)}
+#amb .ad{position:relative;z-index:1;font-size:min(5vw,26px);margin-top:10px;text-shadow:0 2px 10px rgba(0,0,0,.5)}
+#amb .ax{position:absolute;z-index:2;top:calc(env(safe-area-inset-top) + 12px);right:14px;background:rgba(0,0,0,.25);border:0;color:#fff;font-size:20px;border-radius:50%;width:40px;height:40px}
+#amb .say{position:absolute;z-index:2;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom) + 30%);background:rgba(255,255,255,.92);color:#333;border-radius:16px;padding:8px 14px;font-size:16px;max-width:80%;opacity:0;transition:opacity .4s;pointer-events:none}
+#amb .say.on{opacity:1}
 .time{font-size:min(24vw,128px);font-weight:200;letter-spacing:-2px;line-height:1;font-variant-numeric:tabular-nums}
 .time small{font-size:.32em;color:var(--dim);letter-spacing:0;margin-left:4px}
 .date{color:var(--dim);font-size:17px;margin-top:8px}
@@ -114,11 +128,13 @@ input[type=time],input[type=text],input[type=number],select{width:100%;backgroun
 <!-- 首頁 -->
 <div class="pg on" id="pg-home">
   <div class="top"><span id="loc">📍 定位中…</span><span><button id="dimBtn" title="夜間調暗">🌙</button><button id="speakNow" title="立即報時">🔊</button></span></div>
-  <div class="clock">
+  <div class="clock" id="clockBox">
+    <canvas id="sky"></canvas>
     <div class="time" id="time">--:--<small id="sec">--</small></div>
     <div class="date" id="date"></div>
     <div class="next" id="nextInfo"></div>
     <div class="next" id="timerInfo" style="color:var(--acc2)"></div>
+    <div class="tapHint">點一下 → 全螢幕時鐘</div>
   </div>
 
   <div class="card">
@@ -267,6 +283,8 @@ input[type=time],input[type=text],input[type=number],select{width:100%;backgroun
   <div class="card">
     <h3>螢幕</h3>
     <div class="set">保持螢幕常亮<label class="sw"><input type="checkbox" id="sWake"><i></i></label></div>
+    <div class="set">閒置自動進入全螢幕時鐘<select id="sAmb"><option value="0">不要</option><option value="1">1 分鐘後</option><option value="2">2 分鐘後</option><option value="5">5 分鐘後</option></select></div>
+    <div class="set">小暖（吉祥物）<label class="sw"><input type="checkbox" id="sPet"><i></i></label></div>
     <div class="hint">iPhone 鎖定螢幕或切到別的 App 時，網頁無法發出聲音。想要準時報時，請把手機放在充電座上、開著這個畫面。</div>
   </div>
 </div>
@@ -293,6 +311,8 @@ input[type=time],input[type=text],input[type=number],select{width:100%;backgroun
   <p id="ringText"></p>
   <div class="row"><button class="btn" id="snooze">再睡 5 分鐘</button><button class="btn pri" id="ringStop">好，我起來了</button></div>
 </div>
+
+<div id="amb"><canvas id="skyBig"></canvas><button class="ax" id="ambX">✕</button><div class="at" id="ambT">--:--</div><div class="ad" id="ambD"></div><div class="say" id="ambSay"></div></div>
 
 <div class="toast" id="toast"></div>
 
@@ -662,12 +682,12 @@ function getCoords(cb){
 function fetchWx(){
   getCoords(function(lat,lon,name){
     $('loc').textContent='📍 '+name;
-    var url='https://api.open-meteo.com/v1/forecast?latitude='+lat+'&longitude='+lon+'&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto&forecast_days=1';
+    var url='https://api.open-meteo.com/v1/forecast?latitude='+lat+'&longitude='+lon+'&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset&timezone=auto&forecast_days=1';
     var x=new XMLHttpRequest();x.open('GET',url);x.timeout=12000;
     x.onload=function(){
       try{
         var j=JSON.parse(x.responseText),c=j.current,w=WMAP[c.weather_code]||['天氣多變','🌈'];
-        WX={t:c.temperature_2m,feel:c.apparent_temperature,hum:c.relative_humidity_2m,desc:w[0],ic:w[1],hi:j.daily.temperature_2m_max[0],lo:j.daily.temperature_2m_min[0],rain:j.daily.precipitation_probability_max[0]||0,at:Date.now(),name:name};
+        WX={t:c.temperature_2m,feel:c.apparent_temperature,hum:c.relative_humidity_2m,desc:w[0],ic:w[1],hi:j.daily.temperature_2m_max[0],lo:j.daily.temperature_2m_min[0],rain:j.daily.precipitation_probability_max[0]||0,sr:(j.daily.sunrise||[''])[0],ss:(j.daily.sunset||[''])[0],code:c.weather_code,at:Date.now(),name:name};
         save('wx',WX);renderWx();
       }catch(e){$('wxD').textContent='天氣資料讀取失敗';}
     };
@@ -918,6 +938,144 @@ function timerRing(name){
   setTimeout(function(){if(ringTimer){clearInterval(ringTimer);ringTimer=null;}if($('ringOv').className==='ov on')speak(txt+txt,null,st);},4400);
 }
 
+/* ========== 動態天空：日月依真實日出日落移動、月相、星星、雲、原創吉祥物「小暖」 ========== */
+function hm2min(t,def){var m=/T?(\d{1,2}):(\d{2})/.exec(t||'');return m?(+m[1])*60+(+m[2]):def;}
+function hexRgb(h){h=h.replace('#','');return [parseInt(h.substr(0,2),16),parseInt(h.substr(2,2),16),parseInt(h.substr(4,2),16)];}
+function mix(a,b,t){a=hexRgb(a);b=hexRgb(b);t=Math.max(0,Math.min(1,t));return 'rgb('+Math.round(a[0]+(b[0]-a[0])*t)+','+Math.round(a[1]+(b[1]-a[1])*t)+','+Math.round(a[2]+(b[2]-a[2])*t)+')';}
+function rgbMix(c1,c2,t){var a=c1.match(/\d+/g),b=c2.match(/\d+/g);t=Math.max(0,Math.min(1,t));return 'rgb('+[0,1,2].map(function(i){return Math.round(+a[i]+(+b[i]-a[i])*t);}).join(',')+')';}
+function moonPhase(d){var p=((d.getTime()-Date.UTC(2000,0,6,18,14))/864e5)/29.530588853;return p-Math.floor(p);}
+var SKY={stars:[],clouds:[],pet:{x:.32,dir:1,jump:0,jumpT:0,blink:0,lastHour:-1}};
+(function(){for(var i=0;i<80;i++)SKY.stars.push({x:Math.random(),y:Math.random()*.6,r:Math.random()*1.3+.3,p:Math.random()*6.28});
+  for(i=0;i<5;i++)SKY.clouds.push({x:Math.random(),y:.08+Math.random()*.3,s:.6+Math.random()*.7,v:.004+Math.random()*.006});})();
+function skyInfo(now){
+  var sr=hm2min(WX&&WX.sr,360),ss=hm2min(WX&&WX.ss,1050);
+  var m=now.getHours()*60+now.getMinutes()+now.getSeconds()/60;
+  var dl=Math.max(0,Math.min(1,(Math.min(m-sr,ss-m)+25)/50));         // 白天亮度
+  var tw=Math.max(0,1-Math.min(Math.abs(m-sr),Math.abs(m-ss))/70);   // 晨昏霞光
+  var isDawn=Math.abs(m-sr)<Math.abs(m-ss);
+  var sunT=(m-sr)/(ss-sr);
+  var nl=1440-ss+sr,moonT=m>=ss?(m-ss)/nl:(m+1440-ss)/nl;
+  var cloudy=WX&&WX.code>=2?(WX.code>=3?1:.6):.3, rainy=WX&&WX.code>=51;
+  return {m:m,dl:dl,tw:tw,isDawn:isDawn,sunT:sunT,moonT:moonT,cloudy:cloudy,rainy:rainy};
+}
+function drawSky(cv,big){
+  var dpr=Math.min(window.devicePixelRatio||1,2),W=cv.clientWidth,H=cv.clientHeight;
+  if(!W||!H)return;
+  if(cv.width!==Math.round(W*dpr)||cv.height!==Math.round(H*dpr)){cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);}
+  var g=cv.getContext('2d');g.setTransform(dpr,0,0,dpr,0,0);
+  var now=new Date(),I=skyInfo(now),t=now.getTime()/1000,k=Math.min(W,H*1.6)/400;
+  // 天空漸層
+  var top=mix('#0b1430','#3d8fd6',I.dl),bot=mix('#1d2c55','#bfe4ff',I.dl);
+  var twTop=I.isDawn?'#5a5fa8':'#3b3f86',twBot=I.isDawn?'#ffb37a':'#ff8a5c';
+  top=rgbMix(top,mix(twTop,twTop,0),I.tw*.7);bot=rgbMix(bot,mix(twBot,twBot,0),I.tw*.85);
+  if(I.rainy){top=rgbMix(top,'rgb(90,100,115)',.5*I.dl);bot=rgbMix(bot,'rgb(150,160,170)',.5*I.dl);}
+  var gr=g.createLinearGradient(0,0,0,H);gr.addColorStop(0,top);gr.addColorStop(1,bot);g.fillStyle=gr;g.fillRect(0,0,W,H);
+  var horizon=H*.78;
+  // 星星
+  var na=1-I.dl;if(na>.02)SKY.stars.forEach(function(s){g.globalAlpha=na*(.45+.55*Math.sin(t*1.5+s.p)*.5+.275);g.fillStyle='#fff';g.beginPath();g.arc(s.x*W,s.y*horizon,s.r*(big?1.4:1),0,6.283);g.fill();});
+  g.globalAlpha=1;
+  // 太陽／月亮沿弧線移動
+  function arcPos(p){return {x:W*.08+p*W*.84,y:horizon-Math.sin(Math.PI*p)*(horizon-H*.12)};}
+  if(I.sunT>-.05&&I.sunT<1.05){
+    var sp=arcPos(Math.max(0,Math.min(1,I.sunT))),R=22*k*(big?1.3:1);
+    var gl=g.createRadialGradient(sp.x,sp.y,R*.3,sp.x,sp.y,R*4);gl.addColorStop(0,'rgba(255,230,150,.55)');gl.addColorStop(1,'rgba(255,230,150,0)');
+    g.fillStyle=gl;g.beginPath();g.arc(sp.x,sp.y,R*4,0,6.283);g.fill();
+    g.fillStyle=mix('#ff9d4d','#ffe28a',I.dl-I.tw*.5);g.beginPath();g.arc(sp.x,sp.y,R,0,6.283);g.fill();
+    g.strokeStyle='rgba(255,220,120,.6)';g.lineWidth=2.5*k;
+    for(var i=0;i<10;i++){var a=i/10*6.283+t*.15,r1=R*1.35,r2=R*(1.6+.12*Math.sin(t*2+i));g.beginPath();g.moveTo(sp.x+Math.cos(a)*r1,sp.y+Math.sin(a)*r1);g.lineTo(sp.x+Math.cos(a)*r2,sp.y+Math.sin(a)*r2);g.stroke();}
+  }
+  if(I.dl<.95){
+    var mp=arcPos(I.moonT),MR=15*k*(big?1.3:1),ph=moonPhase(now);
+    g.globalAlpha=1-I.dl;
+    var mg=g.createRadialGradient(mp.x,mp.y,MR,mp.x,mp.y,MR*3);mg.addColorStop(0,'rgba(220,230,255,.35)');mg.addColorStop(1,'rgba(220,230,255,0)');
+    g.fillStyle=mg;g.beginPath();g.arc(mp.x,mp.y,MR*3,0,6.283);g.fill();
+    g.save();g.beginPath();g.arc(mp.x,mp.y,MR,0,6.283);g.clip();
+    g.fillStyle='#fdf6d8';g.fillRect(mp.x-MR,mp.y-MR,MR*2,MR*2);
+    g.fillStyle='rgba(200,190,160,.5)';g.beginPath();g.arc(mp.x-MR*.3,mp.y-MR*.2,MR*.22,0,6.283);g.arc(mp.x+MR*.35,mp.y+MR*.3,MR*.15,0,6.283);g.fill();
+    var off=ph<.5?-4*MR*ph:4*MR*(1-ph);
+    g.fillStyle=top;g.globalAlpha=(1-I.dl)*.93;g.beginPath();g.arc(mp.x+off+(ph<.5?0:0),mp.y,MR*1.02,0,6.283);g.fill();
+    g.restore();g.globalAlpha=1;
+  }
+  // 雲
+  SKY.clouds.forEach(function(c,i){
+    if(i/SKY.clouds.length>I.cloudy+.15)return;
+    c.x+=c.v/60;if(c.x>1.25)c.x=-.25;
+    var cx=c.x*W,cy=c.y*horizon,cs=30*k*c.s;
+    g.fillStyle=I.rainy?'rgba(170,175,185,.85)':'rgba(255,255,255,'+(.35+.5*I.dl)+')';
+    g.beginPath();g.arc(cx,cy,cs*.6,0,6.283);g.arc(cx+cs*.55,cy+cs*.1,cs*.48,0,6.283);g.arc(cx-cs*.55,cy+cs*.12,cs*.42,0,6.283);g.arc(cx+cs*.1,cy-cs*.3,cs*.45,0,6.283);g.fill();
+  });
+  // 雨
+  if(I.rainy){g.strokeStyle='rgba(200,215,235,.5)';g.lineWidth=1.2;for(i=0;i<40;i++){var rx=(i*97.3+t*60)%W,ry=((i*53.1)+t*260)%horizon;g.beginPath();g.moveTo(rx,ry);g.lineTo(rx-3,ry+10);g.stroke();}}
+  // 山丘
+  g.fillStyle=mix('#1a2a3e','#7cc47f',I.dl*.95);g.beginPath();g.moveTo(0,H);g.lineTo(0,horizon-8*k);
+  for(var x=0;x<=W;x+=8)g.lineTo(x,horizon-8*k-Math.sin(x/W*6.28*1.3+1)*14*k);g.lineTo(W,H);g.fill();
+  g.fillStyle=mix('#14202f','#5aa95e',I.dl*.95);g.beginPath();g.moveTo(0,H);
+  for(x=0;x<=W;x+=8)g.lineTo(x,horizon+6*k+Math.sin(x/W*6.28*.8+2.5)*10*k);g.lineTo(W,H);g.fill();
+  // 小房子
+  var hx=W*.82,hy=horizon+2*k,hs=26*k;
+  g.fillStyle=mix('#3a3040','#f3e1c4',I.dl);g.fillRect(hx-hs/2,hy-hs*.8,hs,hs*.8);
+  g.fillStyle=mix('#4a2530','#d9534f',I.dl);g.beginPath();g.moveTo(hx-hs*.65,hy-hs*.75);g.lineTo(hx,hy-hs*1.3);g.lineTo(hx+hs*.65,hy-hs*.75);g.fill();
+  g.fillStyle=I.dl<.5?'rgba(255,214,120,'+(.95-I.dl)+')':'#9cc9e8';g.fillRect(hx-hs*.25,hy-hs*.58,hs*.24,hs*.24);
+  g.fillStyle=mix('#2a2030','#8b5a3c',I.dl);g.fillRect(hx+hs*.08,hy-hs*.45,hs*.2,hs*.45);
+  if(S.pet!==false)drawPet(g,W,H,horizon,k,I,t,now);
+}
+function drawPet(g,W,H,horizon,k,I,t,now){
+  var P=SKY.pet,sleep=I.dl<.25,r=13*k*(H>400?1.5:1);
+  if(now.getMinutes()===0&&now.getHours()!==P.lastHour){P.lastHour=now.getHours();petJump();}
+  if(!sleep){P.x+=P.dir*.0009;if(P.x>.68){P.dir=-1;}if(P.x<.1){P.dir=1;}}
+  else{P.x+=(0.7-P.x)*.02;}
+  var jy=0;if(P.jump>0){var e=(t-P.jumpT)/.6;if(e>=1)P.jump=0;else jy=Math.sin(e*Math.PI)*r*2.2;}
+  var x=P.x*W,ground=horizon+6*k+Math.sin(x/W*6.28*.8+2.5)*10*k,bob=sleep?Math.sin(t*1.5)*1.2:Math.abs(Math.sin(t*6))*2.5*k;
+  var y=ground-r-bob-jy;
+  g.save();g.translate(x,y);if(P.dir<0&&!sleep)g.scale(-1,1);
+  // 影子
+  g.fillStyle='rgba(0,0,0,.18)';g.beginPath();g.ellipse?g.ellipse(0,r+bob+jy,r*.8,r*.18,0,0,6.283):g.arc(0,r,r*.6,0,6.283);g.fill();
+  // 身體
+  g.fillStyle='#ffd54a';g.beginPath();g.arc(0,0,r,0,6.283);g.fill();
+  g.fillStyle='#ffe58a';g.beginPath();g.arc(-r*.2,-r*.25,r*.45,0,6.283);g.fill();
+  // 頭毛
+  g.strokeStyle='#f0a830';g.lineWidth=2*k;g.beginPath();g.moveTo(0,-r);g.quadraticCurveTo(r*.15,-r*1.5,r*.35,-r*1.25);g.stroke();
+  // 翅膀拍動
+  var wf=sleep?0:Math.sin(t*(P.jump?20:8))*.35;
+  g.fillStyle='#f5c034';g.save();g.translate(-r*.55,r*.1);g.rotate(-.3+wf);g.beginPath();g.ellipse?g.ellipse(0,0,r*.38,r*.22,0,0,6.283):g.arc(0,0,r*.3,0,6.283);g.fill();g.restore();
+  // 嘴
+  g.fillStyle='#ff8a3d';g.beginPath();g.moveTo(r*.85,-r*.05);g.lineTo(r*1.25,r*.08);g.lineTo(r*.85,r*.22);g.fill();
+  // 眼睛
+  g.strokeStyle='#3a2a1a';g.fillStyle='#3a2a1a';g.lineWidth=1.6*k;
+  if(sleep||(t%4)<.12){g.beginPath();g.arc(r*.42,-r*.2,r*.12,.2,2.9);g.stroke();}
+  else{g.beginPath();g.arc(r*.42,-r*.22,r*.12,0,6.283);g.fill();g.fillStyle='#fff';g.beginPath();g.arc(r*.46,-r*.27,r*.04,0,6.283);g.fill();}
+  // 腮紅
+  g.fillStyle='rgba(255,120,120,.45)';g.beginPath();g.arc(r*.28,r*.15,r*.13,0,6.283);g.fill();
+  // 腳
+  if(!sleep){g.strokeStyle='#ff8a3d';g.lineWidth=2*k;var st=Math.sin(t*6)*r*.15;g.beginPath();g.moveTo(-r*.2,r*.95);g.lineTo(-r*.2+st,r*1.25);g.moveTo(r*.2,r*.95);g.lineTo(r*.2-st,r*1.25);g.stroke();}
+  g.restore();
+  if(sleep){g.fillStyle='rgba(255,255,255,.85)';g.font='bold '+Math.round(11*k*(H>400?1.5:1))+'px sans-serif';
+    for(var i=0;i<3;i++){var ph=(t*.4+i/3)%1;g.globalAlpha=1-ph;g.fillText('z',x+r*.6+ph*r*1.6,y-r-ph*r*2.4);}g.globalAlpha=1;}
+}
+function petJump(){SKY.pet.jump=1;SKY.pet.jumpT=Date.now()/1000;}
+var PET_TALK=['嗨～我是小暖！','今天也要開心喔！','記得喝水～','伸個懶腰吧！','你好棒！','嘰嘰～','陪你一起看天空 ☁️','要不要出去走走？'];
+var ambOn=false,lastAct=Date.now(),sayT;
+function petSay(){
+  var I=skyInfo(new Date()),txt=I.dl<.25?pick(['呼…呼…（小暖睡著了）','嗯…晚安…','zzz…明天見']):pick(PET_TALK);
+  var el=$('ambSay');el.textContent=txt;el.className='say on';clearTimeout(sayT);sayT=setTimeout(function(){el.className='say';},2600);
+}
+function openAmb(){ambOn=true;$('amb').className='on';wake();renderAmbText();}
+function closeAmb(){ambOn=false;$('amb').className='';lastAct=Date.now();}
+function renderAmbText(){
+  var d=new Date();$('ambT').textContent=pad(d.getHours())+':'+pad(d.getMinutes());
+  $('ambD').textContent=(d.getMonth()+1)+'月'+d.getDate()+'日 星期'+WEEK[d.getDay()]+(WX?'　'+WX.ic+' '+Math.round(WX.t)+'°':'');
+}
+var lastFrame=0;
+function skyLoop(ts){
+  requestAnimationFrame(skyLoop);
+  if(document.hidden||ts-lastFrame<33)return;lastFrame=ts;
+  if(ambOn){drawSky($('skyBig'),true);}
+  else if($('pg-home').className.indexOf('on')>=0)drawSky($('sky'),false);
+  // 閒置自動進入
+  var am=S.amb==null?2:+S.amb;
+  if(!ambOn&&am&&unlocked&&Date.now()-lastAct>am*60000&&$('ringOv').className!=='ov on')openAmb();
+}
+
 /* ========== 主迴圈 ========== */
 var lastMin=-1;
 function inQuiet(h){var a=+S.qs,b=+S.qe;if(a===b)return false;return a<b?(h>=a&&h<b):(h>=a||h<b);}
@@ -927,7 +1085,9 @@ function tick(){
   $('time').innerHTML=pad(h)+':'+pad(m)+'<small>'+pad(d.getSeconds())+'</small>';
   $('date').textContent=(d.getMonth()+1)+'月'+d.getDate()+'日　星期'+WEEK[d.getDay()];
   if(m===lastMin)return;
+  if(lastMin!==-1){var te=$('time');te.className='time';void te.offsetWidth;te.className='time flip';}
   lastMin=m;
+  if(ambOn)renderAmbText();
   if(!unlocked){renderNext();return;}
   var hm=pad(h)+':'+pad(m),busy=false;
 
@@ -1077,14 +1237,14 @@ $('snooze').addEventListener('click',function(){
   for(i=0;i<24;i++){o=document.createElement('option');o.value=i;o.textContent=pad(i)+':00';qs.appendChild(o);qe.appendChild(o.cloneNode(true));}
   CITIES.forEach(function(c){o=document.createElement('option');o.value=c[0];o.textContent=c[1];$('sCity').appendChild(o);});
   $('sChime').value=S.chime;qs.value=S.qs;qe.value=S.qe;$('sWx').checked=S.wx;$('sCheer').checked=S.cheer;$('sBell').checked=S.bell;
-  $('sLead').value=S.lead;$('sRate').value=S.rate;$('sMusic').value=S.music||'off';$('sMwhen').value=S.mwhen||'all';$('sMlen').value=S.mlen;$('customBox').style.display=S.music==='custom'?'block':'none';$('sVsrc').value=S.vsrc||'female';$('sVtoken').value=S.vtoken||'';$('agongBox').style.display=S.vsrc==='agong'?'block':'none';$('sStyle').value=S.style||'std';$('sVol').value=S.vol;$('sCity').value=S.city;$('sGid').value=S.gid;$('sWake').checked=S.wake;
+  $('sLead').value=S.lead;$('sRate').value=S.rate;$('sMusic').value=S.music||'off';$('sMwhen').value=S.mwhen||'all';$('sMlen').value=S.mlen;$('customBox').style.display=S.music==='custom'?'block':'none';$('sVsrc').value=S.vsrc||'female';$('sVtoken').value=S.vtoken||'';$('agongBox').style.display=S.vsrc==='agong'?'block':'none';$('sStyle').value=S.style||'std';$('sVol').value=S.vol;$('sCity').value=S.city;$('sGid').value=S.gid;$('sWake').checked=S.wake;$('sAmb').value=S.amb==null?2:S.amb;$('sPet').checked=S.pet!==false;
   function upd(){
     var oldCity=S.city;
     S.chime=+$('sChime').value;S.qs=+qs.value;S.qe=+qe.value;S.wx=$('sWx').checked;S.cheer=$('sCheer').checked;S.bell=$('sBell').checked;
-    S.lead=+$('sLead').value;S.voice=$('sVoice').value;S.rate=+$('sRate').value;S.music=$('sMusic').value;S.mwhen=$('sMwhen').value;S.mlen=+$('sMlen').value;$('customBox').style.display=S.music==='custom'?'block':'none';S.vsrc=$('sVsrc').value;S.vtoken=$('sVtoken').value.trim();$('agongBox').style.display=S.vsrc==='agong'?'block':'none';showVoiceName();S.style=$('sStyle').value;S.vol=+$('sVol').value;S.city=$('sCity').value;S.gid=$('sGid').value.trim();S.wake=$('sWake').checked;
+    S.lead=+$('sLead').value;S.voice=$('sVoice').value;S.rate=+$('sRate').value;S.music=$('sMusic').value;S.mwhen=$('sMwhen').value;S.mlen=+$('sMlen').value;$('customBox').style.display=S.music==='custom'?'block':'none';S.vsrc=$('sVsrc').value;S.vtoken=$('sVtoken').value.trim();$('agongBox').style.display=S.vsrc==='agong'?'block':'none';showVoiceName();S.style=$('sStyle').value;S.vol=+$('sVol').value;S.city=$('sCity').value;S.gid=$('sGid').value.trim();S.wake=$('sWake').checked;S.amb=+$('sAmb').value;S.pet=$('sPet').checked;
     save('set',S);if(oldCity!==S.city)fetchWx();if(S.wake)wake();else if(wakeLock){wakeLock.release();wakeLock=null;}
   }
-  var ids=['sMusic','sMwhen','sMlen','sVsrc','sVtoken','sStyle','sChime','sQs','sQe','sWx','sCheer','sBell','sLead','sVoice','sRate','sVol','sCity','sGid','sWake'];
+  var ids=['sMusic','sMwhen','sMlen','sVsrc','sVtoken','sStyle','sChime','sQs','sQe','sWx','sCheer','sBell','sLead','sVoice','sRate','sVol','sCity','sGid','sWake','sAmb','sPet'];
   ids.forEach(function(id){$(id).addEventListener('change',upd);});
   $('sTest').addEventListener('click',function(){upd();announce(false);});
 })();
@@ -1126,6 +1286,14 @@ $('mTest').addEventListener('click',function(){
   stopSpeech();var keep=S.mwhen;S.mwhen='all';if(S.music==='off'){toast('音樂是關閉的');S.mwhen=keep;return;}playMusic('quote');S.mwhen=keep;
 });
 $('mStop').addEventListener('click',stopMusic);
+$('clockBox').addEventListener('click',function(e){
+  var r=this.getBoundingClientRect(),px=(e.clientX-r.left)/r.width;
+  if(S.pet!==false&&Math.abs(px-SKY.pet.x)<.08&&(e.clientY-r.top)/r.height>.6){petJump();toast(pick(PET_TALK));return;}
+  openAmb();
+});
+$('amb').addEventListener('click',function(e){if(e.target.id==='ambX'){closeAmb();return;}petJump();petSay();});
+['touchstart','mousedown','keydown','scroll'].forEach(function(ev){document.addEventListener(ev,function(){if(!ambOn)lastAct=Date.now();},true);});
+requestAnimationFrame(skyLoop);
 $('tSeg').addEventListener('click',function(e){var m=e.target.getAttribute('data-m');if(!m)return;tMode=m;var b=$('tSeg').children;for(var i=0;i<b.length;i++)b[i].className=b[i].getAttribute('data-m')===m?'on':'';$('cdBox').style.display=m==='cd'?'':'none';$('swBox').style.display=m==='sw'?'':'none';});
 $('cdPreset').innerHTML=CDP.map(function(p,i){return '<button data-p="'+i+'">'+p[0]+' '+p[1]+'<span>'+sayLen(p[2])+'</span></button>';}).join('');
 $('cdPreset').addEventListener('click',function(e){var b=e.target.closest('[data-p]');if(!b)return;var p=CDP[+b.getAttribute('data-p')];cdSetDur(p[2],p[2]===3600?'':p[1],true);});
