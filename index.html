@@ -247,11 +247,11 @@ input[type=time],input[type=text],input[type=number],select{width:100%;backgroun
     <div class="set">播放時機<select id="sMwhen"><option value="all">報時、鬧鐘、每日一句</option><option value="alarm">只有鬧鐘和每日一句</option><option value="ring">只有鬧鐘</option></select></div>
     <div id="customBox" style="display:none">
       <div class="set">播放長度<select id="sMlen"><option value="20">20 秒</option><option value="30">30 秒</option><option value="60">1 分鐘</option><option value="0">整首</option></select></div>
-      <input type="file" id="mFile" accept="audio/*" style="display:none">
+      <input type="file" id="mFile" style="position:absolute;left:-9999px;opacity:0">
       <div class="row"><button class="btn" id="mPick">選擇音樂檔</button><span class="hint" id="mName" style="align-self:center;margin:0">尚未選擇</span></div>
     </div>
     <div class="row"><button class="btn" id="mTest">▶︎ 試聽音樂</button><button class="btn" id="mStop">■ 停止</button></div>
-    <div class="hint">內建音樂是 App 即時彈奏的，不用網路。自選音樂會存在這支手機裡（mp3／m4a，15MB 以內）。</div>
+    <div class="hint">內建音樂是 App 即時彈奏的，不用網路。自選音樂會存在這支手機裡（m4a／mp3／wav，15MB 以內）。請從「檔案」App 選；Apple Music 下載的歌曲有版權保護，無法使用。。</div>
   </div>
 
   <div class="card">
@@ -1096,15 +1096,29 @@ if(gItems.at)$('gStatus').textContent='上次同步：'+new Date(gItems.at).toLo
 (function(){var tk=load('gtok',null);if(tk&&tk.exp>Date.now()){gToken=tk.t;}})();
 $('mPick').addEventListener('click',function(){$('mFile').click();});
 $('mFile').addEventListener('change',function(){
-  var f=this.files&&this.files[0];if(!f)return;
+  var f=this.files&&this.files[0],inp=this;if(!f)return;
+  inp.value='';
+  if(!/\.(m4a|mp3|aac|wav|mp4|m4b|caf|aif|aiff|flac|ogg|opus)$/i.test(f.name)&&!/^audio\//.test(f.type||'')){toast('請選音樂檔（m4a、mp3、wav…）');return;}
   if(f.size>15*1024*1024){toast('檔案太大，請用 15MB 以內');return;}
-  var r=new FileReader();r.onload=function(){
-    customBuf=null;
-    idbPut('music',{name:f.name,data:r.result},function(ok){
-      if(!ok){toast('儲存失敗');return;}
-      save('mname',f.name);$('mName').textContent='🎵 '+f.name;toast('已存好音樂');
-    });
-  };r.readAsArrayBuffer(f);
+  $('mName').textContent='讀取中…';
+  var r=new FileReader();
+  r.onerror=function(){$('mName').textContent='讀取失敗';toast('讀不到這個檔案，若在 iCloud 請先下載到手機');};
+  r.onload=function(){
+    var data=r.result;
+    function store(buf){
+      customBuf=buf||null;
+      idbPut('music',{name:f.name,data:data},function(ok){
+        if(!ok){$('mName').textContent='儲存失敗';toast('儲存失敗，手機空間可能不足');return;}
+        save('mname',f.name);$('mName').textContent='🎵 '+f.name+(buf?'（'+Math.round(buf.duration)+' 秒）':'');toast('已存好音樂');
+      });
+    }
+    if(!audioCtx){store(null);return;}
+    var done=false;
+    function ok(b){if(done)return;done=true;store(b);}
+    function bad(){if(done)return;done=true;$('mName').textContent='無法播放此檔';toast('這個檔案格式無法播放，可能有版權保護');}
+    try{var pr=audioCtx.decodeAudioData(data.slice(0),ok,bad);if(pr&&pr.then)pr.then(ok,bad);}catch(e){bad();}
+  };
+  r.readAsArrayBuffer(f);
 });
 $('mName').textContent=load('mname','')?'🎵 '+load('mname',''):'尚未選擇';
 $('mTest').addEventListener('click',function(){
