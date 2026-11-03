@@ -130,6 +130,8 @@ input[type=time],input[type=text],input[type=number],select{width:100%;backgroun
 #petPop span{font-size:15px;flex:1 1 100%}
 #petPop a.sk{background:linear-gradient(135deg,#4fc3f7,#7e57c2)}
 #petPop a{flex:1;text-align:center;background:linear-gradient(135deg,#ff9f43,#ff6b6b);color:#fff;text-decoration:none;font-weight:700;font-size:15px;padding:9px 13px;border-radius:12px;white-space:nowrap}
+#amb #ambPlay2{bottom:calc(env(safe-area-inset-bottom) + 66px)}
+@media (orientation:landscape){#amb #ambPlay2{bottom:calc(env(safe-area-inset-bottom) + 14px);right:calc(env(safe-area-inset-right) + 170px)}#amb #ambPlay{bottom:calc(env(safe-area-inset-bottom) + 14px);right:calc(env(safe-area-inset-right) + 16px)}}
 #amb .play{position:absolute;z-index:3;right:16px;bottom:calc(env(safe-area-inset-bottom) + 18px);background:rgba(255,255,255,.85);color:#4a3a28;text-decoration:none;font-size:15px;font-weight:700;padding:9px 14px;border-radius:20px}
 .speaking{animation:pulse 1.2s infinite}
 @keyframes pulse{50%{opacity:.5}}
@@ -329,7 +331,7 @@ input[type=time],input[type=text],input[type=number],select{width:100%;backgroun
   <div class="hint" id="ringAuto" style="margin-top:16px;font-size:14px"></div>
 </div>
 
-<div id="amb"><canvas id="skyBig"></canvas><button class="ax" id="ambX">✕</button><div class="at" id="ambT">--:--</div><div class="ad" id="ambD"></div><div class="say" id="ambSay"></div><a class="play" id="ambPlay" href="game.html">🎮 陪小暖玩</a><a class="play" id="ambPlay2" style="bottom:calc(env(safe-area-inset-bottom) + 66px)" href="https://kftseng2oo1.github.io/warmmy/?from=clock">🏂 小暖滑滑樂</a></div>
+<div id="amb"><canvas id="skyBig"></canvas><button class="ax" id="ambX">✕</button><div class="at" id="ambT">--:--</div><div class="ad" id="ambD"></div><div class="say" id="ambSay"></div><a class="play" id="ambPlay" href="game.html">🎮 陪小暖玩</a><a class="play" id="ambPlay2" href="https://kftseng2oo1.github.io/warmmy/?from=clock">🏂 小暖滑滑樂</a></div>
 <div id="parade"><canvas id="pdCv"></canvas><div class="pt" id="pdT"></div><div class="ps" id="pdS"></div><div class="ph">點一下關閉</div></div>
 <div id="petPop"><span id="petPopT">嗨～我是小暖！</span><a href="game.html">🎮 天氣大冒險</a><a class="sk" href="https://kftseng2oo1.github.io/warmmy/?from=clock">🏂 小暖滑滑樂</a></div>
 
@@ -1032,7 +1034,7 @@ function drawSky(cv,big){
   g.fillStyle=mix('#14202f','#5aa95e',I.dl*.95);g.beginPath();g.moveTo(0,H);
   for(x=0;x<=W;x+=8)g.lineTo(x,horizon+6*k+Math.sin(x/W*6.28*.8+2.5)*10*k);g.lineTo(W,H);g.fill();
   // 小暖城堡
-  drawCastle(g,W*.83,horizon+4*k,Math.min((big?40:44)*k*(H>400&&!big?1.15:1),horizon*.13,W*.12),I,t,now);
+  drawCastle(g,W*(big&&W>H?.74:.83),horizon+4*k,Math.min((big?40:44)*k*(H>400&&!big?1.15:1),horizon*.13,W*.12),I,t,now);
   if(S.pet!==false)drawPet(g,W,H,horizon,k,I,t,now);
 }
 function drawCastle(g,x,y,s,I,t,now,opt){
