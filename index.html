@@ -253,7 +253,7 @@ input[type=time],input[type=text],input[type=number],select{width:100%;backgroun
     <h3>報時</h3>
     <div class="set">報時頻率<select id="sChime"><option value="0">關閉</option><option value="60">每整點</option><option value="30">每半小時</option><option value="15">每 15 分鐘</option></select></div>
     <div class="set">安靜時段（不報時）<span><select id="sQs"></select> – <select id="sQe"></select></span></div>
-    <div class="set">報時動畫<select id="sParade"><option value="on">🏠 小屋娃娃兵遊行（有鼓聲）</option><option value="quiet">🏠 娃娃兵遊行（不要鼓聲）</option><option value="off">不要動畫</option></select></div>
+    <div class="set">報時動畫<select id="sParade"><option value="on">🏠 娃娃兵遊行＋🎵 歡樂進行曲</option><option value="quiet">🏠 娃娃兵遊行（安靜，不要音樂）</option><option value="off">不要動畫</option></select></div>
     <div class="set">看看報時動畫<button id="pdTest" style="padding:6px 12px;border-radius:10px;border:0;background:#ff9f43;color:#fff;font-weight:700">▶ 試播</button></div>
     <div class="set">報時附帶天氣<label class="sw"><input type="checkbox" id="sWx"><i></i></label></div>
     <div class="set">報時附帶打氣旁白<label class="sw"><input type="checkbox" id="sCheer"><i></i></label></div>
@@ -571,7 +571,7 @@ function playMusic(kind,cb){
   if(m==='custom')playCustom(cb);else playSong(m,cb);
 }
 window.__wc={songs:SONGS,mn:function(){return musicNodes.length;}};
-function speakM(text,st,kind){speak(text,function(){setTimeout(function(){playMusic(kind);},500);},st);}
+function speakM(text,st,kind){speak(text,function(){setTimeout(function(){if(kind==='chime'&&PD.on&&S.parade!=='quiet')return;playMusic(kind);},500);},st);}
 
 /* ===== 雲端人聲（arcar /tts，與早安卡片同一套） ===== */
 var PROXY='https://arcar.kftseng2oo1.workers.dev';
@@ -1333,20 +1333,52 @@ var PD={on:false,t0:0,n:0,raf:0};
 function parade(force){
   if(!force&&S.parade==='off')return;
   var d=new Date(),h=d.getHours(),m=d.getMinutes(),h12=h%12||12;
-  PD.n=m===0?h12:2;PD.h=h;PD.m=m;PD.t0=performance.now()/1000;PD.on=true;PD.lastBeat=-1;
+  PD.n=m===0?h12:2;PD.h=h;PD.m=m;PD.t0=performance.now()/1000;PD.on=true;PD.mStarted=false;
   PD.dur=2.4+(PD.n-1)*.75+8.2+2.2;
   $('pdT').textContent=pad(h)+':'+pad(m);
   $('pdS').textContent=m===0?'噹～'+h12+' 點了！'+h12+' 位娃娃兵出來報時':'噹～現在 '+pad(h)+':'+pad(m);
   $('parade').className='on';cancelAnimationFrame(PD.raf);PD.raf=requestAnimationFrame(pdLoop);
 }
-function closeParade(){PD.on=false;$('parade').className='';cancelAnimationFrame(PD.raf);}
-function pdBeat(strong){
+function closeParade(){PD.on=false;$('parade').className='';cancelAnimationFrame(PD.raf);pdMusicStop();}
+/* 原創歡樂進行曲（C 大調、8 小節循環，每格＝八分音符） */
+var PD_MEL=[[67,1],[72,1],[76,1],[79,1],[76,2],[72,2], [74,1],[76,1],[77,1],[74,1],[71,2],[67,2],
+  [69,1],[71,1],[72,1],[74,1],[76,1],[77,1],[79,2], [77,1],[76,1],[74,1],[71,1],[72,4],
+  [76,1],[76,1],[77,1],[79,1],[81,2],[79,2], [77,1],[77,1],[76,1],[74,1],[76,2],[72,2],
+  [74,1],[74,1],[76,1],[77,1],[79,1],[77,1],[76,1],[74,1], [72,2],[67,2],[72,4]];
+var PD_CH=[[48,52,55],[43,50,55],[41,53,57],[43,50,55],[41,53,57],[48,52,55],[43,50,55],[48,52,55]]; // C G F G F C G C
+var PD_STEPS=(function(){var a=[],i=0;PD_MEL.forEach(function(n){a[i]=n;i+=n[1];});a.length=64;return a;})();
+var PD_E=60/126/2;
+function hz(m){return 440*Math.pow(2,(m-69)/12);}
+function pdNote(ctx,out,f,t,d,type,vol,dec){var o=ctx.createOscillator(),gn=ctx.createGain();o.type=type;o.frequency.value=f;
+  gn.gain.setValueAtTime(0,t);gn.gain.linearRampToValueAtTime(vol,t+.008);gn.gain.exponentialRampToValueAtTime(.001,t+(dec||d));
+  o.connect(gn);gn.connect(out);o.start(t);o.stop(t+(dec||d)+.05);}
+function pdDrum(ctx,out,t,strong){var len=.09,b=ctx.createBuffer(1,Math.floor(ctx.sampleRate*len),ctx.sampleRate),dd=b.getChannelData(0);
+  for(var i=0;i<dd.length;i++)dd[i]=(Math.random()*2-1)*Math.pow(1-i/dd.length,3);
+  var sN=ctx.createBufferSource(),f=ctx.createBiquadFilter(),gn=ctx.createGain();sN.buffer=b;f.type='bandpass';f.frequency.value=strong?180:1200;
+  gn.gain.value=strong?.9:.35;sN.connect(f);f.connect(gn);gn.connect(out);sN.start(t);
+  if(strong)pdNote(ctx,out,70,t,.18,'sine',.6,.2);}
+function pdMusicStart(){
   if(!audioCtx||S.parade==='quiet')return;
-  try{var t=audioCtx.currentTime,len=.09,b=audioCtx.createBuffer(1,audioCtx.sampleRate*len,audioCtx.sampleRate),dd=b.getChannelData(0);
-    for(var i=0;i<dd.length;i++)dd[i]=(Math.random()*2-1)*Math.pow(1-i/dd.length,3);
-    var s=audioCtx.createBufferSource(),f=audioCtx.createBiquadFilter(),gn=audioCtx.createGain();s.buffer=b;f.type='bandpass';f.frequency.value=strong?180:900;
-    gn.gain.value=(strong?.35:.12)*S.vol;s.connect(f);f.connect(gn);gn.connect(audioCtx.destination);s.start(t);}catch(e){}
+  try{if(audioCtx.state==='suspended')audioCtx.resume();
+    pdMusicStop(true);PD.out=audioCtx.createGain();PD.out.gain.value=0;PD.out.connect(audioCtx.destination);
+    PD.out.gain.linearRampToValueAtTime(.16*S.vol,audioCtx.currentTime+.4);
+    PD.mT0=audioCtx.currentTime+.08;PD.step=0;}catch(e){PD.out=null;}
 }
+function pdMusicTick(fadeAt){
+  if(!PD.out)return;var ctx=audioCtx,now=ctx.currentTime;
+  // 報時人聲在念的時候把音樂壓小
+  var talking=(synth&&synth.speaking)||!!curSrc;PD.out.gain.setTargetAtTime((talking?.06:.16)*S.vol,now,.25);
+  while(PD.mT0+PD.step*PD_E<now+.25){
+    var t=PD.mT0+PD.step*PD_E,i=PD.step%64,bar=Math.floor(i/8),inBar=i%8,ch=PD_CH[bar],m=PD_STEPS[i];
+    if(m){var d=m[1]*PD_E;pdNote(ctx,PD.out,hz(m[0]+12),t,d,'triangle',.55,Math.min(.9,d+.15));pdNote(ctx,PD.out,hz(m[0]+24),t,d,'sine',.18,.35);}
+    if(inBar%2===0){if(inBar%4===0)pdNote(ctx,PD.out,hz(ch[0]),t,PD_E*1.6,'triangle',.7);
+      else{pdNote(ctx,PD.out,hz(ch[1]+12),t,PD_E,'square',.07,.16);pdNote(ctx,PD.out,hz(ch[2]+12),t,PD_E,'square',.07,.16);}
+      pdDrum(ctx,PD.out,t,inBar===0);}
+    PD.step++;
+  }
+}
+function pdMusicStop(now){if(!PD.out)return;var o=PD.out;PD.out=null;
+  try{var t=audioCtx.currentTime;o.gain.cancelScheduledValues(t);o.gain.setValueAtTime(o.gain.value,t);o.gain.linearRampToValueAtTime(0,t+(now?.05:1.2));setTimeout(function(){try{o.disconnect();}catch(e){}},now?200:1500);}catch(e){}}
 function pdLoop(){
   if(!PD.on)return;PD.raf=requestAnimationFrame(pdLoop);
   var t=performance.now()/1000-PD.t0;if(t>PD.dur){closeParade();return;}
@@ -1382,7 +1414,9 @@ function pdLoop(){
   list.forEach(function(s){var depth=.78+.4*(s.y-GY)/(2*ry),a=Math.min(1,s.u/.04,(1-s.u)/.04);
     g.globalAlpha=Math.max(0,a);pdSoldier(g,s.x,s.y,sh*depth,t*4.2+s.i*.6,s.i===0?'drum':s.i%3===1?'horn':'flag',s.dir);g.globalAlpha=1;});
   // 鼓聲
-  var beat=Math.floor(t*2.1);if(t>2.4&&t<closeAt&&beat!==PD.lastBeat){PD.lastBeat=beat;pdBeat(beat%4===0);}
+  if(t>1.2&&!PD.mStarted){PD.mStarted=true;pdMusicStart();}
+  if(t>closeAt+.6&&PD.out)pdMusicStop();
+  pdMusicTick();
   // 小暖在旁邊拍手
   if(S.pet!==false){var kx=cx-hw*.62,ky=GY-Math.max(12,hw*.07)*1.2,jy=Math.abs(Math.sin(t*5))*8;pdChick(g,kx,ky-jy,Math.max(12,hw*.07),t);}
 }
