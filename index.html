@@ -36,6 +36,13 @@ body.dim{filter:brightness(.45)}
 #amb .ax{position:absolute;z-index:2;top:calc(env(safe-area-inset-top) + 12px);right:14px;background:rgba(0,0,0,.25);border:0;color:#fff;font-size:20px;border-radius:50%;width:40px;height:40px}
 #amb .say{position:absolute;z-index:2;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom) + 30%);background:rgba(255,255,255,.92);color:#333;border-radius:16px;padding:8px 14px;font-size:16px;max-width:80%;opacity:0;transition:opacity .4s;pointer-events:none}
 #amb .say.on{opacity:1}
+#parade{position:fixed;inset:0;z-index:18;display:none;color:#fff;text-align:center;overflow:hidden}
+#parade.on{display:block;animation:pdIn .5s ease}
+@keyframes pdIn{from{opacity:0}to{opacity:1}}
+#parade canvas{position:absolute;inset:0;width:100%;height:100%}
+#parade .pt{position:relative;margin-top:calc(env(safe-area-inset-top) + 4vh);font-size:min(16vw,12vh);font-weight:300;text-shadow:0 3px 18px rgba(0,0,0,.45);font-variant-numeric:tabular-nums}
+#parade .ps{position:relative;font-size:min(5vw,24px);text-shadow:0 2px 10px rgba(0,0,0,.5)}
+#parade .ph{position:absolute;left:0;right:0;bottom:calc(env(safe-area-inset-bottom) + 14px);font-size:13px;opacity:.75}
 .time{font-size:min(24vw,128px);font-weight:200;letter-spacing:-2px;line-height:1;font-variant-numeric:tabular-nums}
 .time small{font-size:.32em;color:var(--dim);letter-spacing:0;margin-left:4px}
 .date{color:var(--dim);font-size:17px;margin-top:8px}
@@ -246,6 +253,8 @@ input[type=time],input[type=text],input[type=number],select{width:100%;backgroun
     <h3>報時</h3>
     <div class="set">報時頻率<select id="sChime"><option value="0">關閉</option><option value="60">每整點</option><option value="30">每半小時</option><option value="15">每 15 分鐘</option></select></div>
     <div class="set">安靜時段（不報時）<span><select id="sQs"></select> – <select id="sQe"></select></span></div>
+    <div class="set">報時動畫<select id="sParade"><option value="on">🏠 小屋娃娃兵遊行（有鼓聲）</option><option value="quiet">🏠 娃娃兵遊行（不要鼓聲）</option><option value="off">不要動畫</option></select></div>
+    <div class="set">看看報時動畫<button id="pdTest" style="padding:6px 12px;border-radius:10px;border:0;background:#ff9f43;color:#fff;font-weight:700">▶ 試播</button></div>
     <div class="set">報時附帶天氣<label class="sw"><input type="checkbox" id="sWx"><i></i></label></div>
     <div class="set">報時附帶打氣旁白<label class="sw"><input type="checkbox" id="sCheer"><i></i></label></div>
     <div class="set">報時前提示音<label class="sw"><input type="checkbox" id="sBell"><i></i></label></div>
@@ -320,6 +329,7 @@ input[type=time],input[type=text],input[type=number],select{width:100%;backgroun
 </div>
 
 <div id="amb"><canvas id="skyBig"></canvas><button class="ax" id="ambX">✕</button><div class="at" id="ambT">--:--</div><div class="ad" id="ambD"></div><div class="say" id="ambSay"></div><a class="play" id="ambPlay" href="game.html">🎮 陪小暖玩</a></div>
+<div id="parade"><canvas id="pdCv"></canvas><div class="pt" id="pdT"></div><div class="ps" id="pdS"></div><div class="ph">點一下關閉</div></div>
 <div id="petPop"><span id="petPopT">嗨～我是小暖！</span><a href="game.html">🎮 陪小暖玩</a></div>
 
 <div class="toast" id="toast"></div>
@@ -673,6 +683,7 @@ function announce(withQuote){
   if(S.cheer)s+=cheer(h,st);
   if(withQuote)s+=quoteSt(st);
   s+=closeLine(st);
+  parade();
   bell(2,function(){speakM(s,st,'chime');});
 }
 
@@ -1258,15 +1269,15 @@ $('snooze').addEventListener('click',function(){
   var qs=$('sQs'),qe=$('sQe'),i,o;
   for(i=0;i<24;i++){o=document.createElement('option');o.value=i;o.textContent=pad(i)+':00';qs.appendChild(o);qe.appendChild(o.cloneNode(true));}
   CITIES.forEach(function(c){o=document.createElement('option');o.value=c[0];o.textContent=c[1];$('sCity').appendChild(o);});
-  $('sChime').value=S.chime;qs.value=S.qs;qe.value=S.qe;$('sWx').checked=S.wx;$('sCheer').checked=S.cheer;$('sBell').checked=S.bell;
+  $('sChime').value=S.chime;$('sParade').value=S.parade||'on';qs.value=S.qs;qe.value=S.qe;$('sWx').checked=S.wx;$('sCheer').checked=S.cheer;$('sBell').checked=S.bell;
   $('sLead').value=S.lead;$('sRate').value=S.rate;$('sMusic').value=S.music||'off';$('sMwhen').value=S.mwhen||'all';$('sMlen').value=S.mlen;$('customBox').style.display=S.music==='custom'?'block':'none';$('sVsrc').value=S.vsrc||'female';$('sVtoken').value=S.vtoken||'';$('agongBox').style.display=S.vsrc==='agong'?'block':'none';$('sStyle').value=S.style||'std';$('sVol').value=S.vol;$('sCity').value=S.city;$('sGid').value=S.gid;$('sWake').checked=S.wake;$('sAuto').value=S.auto==null?60:S.auto;$('sAmb').value=S.amb==null?2:S.amb;$('sPet').checked=S.pet!==false;
   function upd(){
     var oldCity=S.city;
-    S.chime=+$('sChime').value;S.qs=+qs.value;S.qe=+qe.value;S.wx=$('sWx').checked;S.cheer=$('sCheer').checked;S.bell=$('sBell').checked;
+    S.chime=+$('sChime').value;S.parade=$('sParade').value;S.qs=+qs.value;S.qe=+qe.value;S.wx=$('sWx').checked;S.cheer=$('sCheer').checked;S.bell=$('sBell').checked;
     S.lead=+$('sLead').value;S.voice=$('sVoice').value;S.rate=+$('sRate').value;S.music=$('sMusic').value;S.mwhen=$('sMwhen').value;S.mlen=+$('sMlen').value;$('customBox').style.display=S.music==='custom'?'block':'none';S.vsrc=$('sVsrc').value;S.vtoken=$('sVtoken').value.trim();$('agongBox').style.display=S.vsrc==='agong'?'block':'none';showVoiceName();S.style=$('sStyle').value;S.vol=+$('sVol').value;S.city=$('sCity').value;S.gid=$('sGid').value.trim();S.wake=$('sWake').checked;S.auto=+$('sAuto').value;S.amb=+$('sAmb').value;S.pet=$('sPet').checked;
     save('set',S);if(oldCity!==S.city)fetchWx();if(S.wake)wake();else if(wakeLock){wakeLock.release();wakeLock=null;}
   }
-  var ids=['sMusic','sMwhen','sMlen','sVsrc','sVtoken','sStyle','sChime','sQs','sQe','sWx','sCheer','sBell','sLead','sVoice','sRate','sVol','sCity','sGid','sWake','sAuto','sAmb','sPet'];
+  var ids=['sParade','sMusic','sMwhen','sMlen','sVsrc','sVtoken','sStyle','sChime','sQs','sQe','sWx','sCheer','sBell','sLead','sVoice','sRate','sVol','sCity','sGid','sWake','sAuto','sAmb','sPet'];
   ids.forEach(function(id){$(id).addEventListener('change',upd);});
   $('sTest').addEventListener('click',function(){upd();announce(false);});
 })();
@@ -1317,6 +1328,147 @@ $('amb').addEventListener('click',function(e){if(e.target.id==='ambX'){closeAmb(
 var popT;function petPop(m){$('petPopT').textContent=m+' 要不要一起玩？';$('petPop').className='on';clearTimeout(popT);popT=setTimeout(function(){$('petPop').className='';},5000);}
 $('gameBtn').addEventListener('click',function(){location.href='game.html';});
 ['touchstart','mousedown','keydown','scroll'].forEach(function(ev){document.addEventListener(ev,function(){if(!ambOn)lastAct=Date.now();},true);});
+/* ========== 報時動畫：小屋娃娃兵遊行（廣場鐘） ========== */
+var PD={on:false,t0:0,n:0,raf:0};
+function parade(force){
+  if(!force&&S.parade==='off')return;
+  var d=new Date(),h=d.getHours(),m=d.getMinutes(),h12=h%12||12;
+  PD.n=m===0?h12:2;PD.h=h;PD.m=m;PD.t0=performance.now()/1000;PD.on=true;PD.lastBeat=-1;
+  PD.dur=2.4+(PD.n-1)*.75+8.2+2.2;
+  $('pdT').textContent=pad(h)+':'+pad(m);
+  $('pdS').textContent=m===0?'噹～'+h12+' 點了！'+h12+' 位娃娃兵出來報時':'噹～現在 '+pad(h)+':'+pad(m);
+  $('parade').className='on';cancelAnimationFrame(PD.raf);PD.raf=requestAnimationFrame(pdLoop);
+}
+function closeParade(){PD.on=false;$('parade').className='';cancelAnimationFrame(PD.raf);}
+function pdBeat(strong){
+  if(!audioCtx||S.parade==='quiet')return;
+  try{var t=audioCtx.currentTime,len=.09,b=audioCtx.createBuffer(1,audioCtx.sampleRate*len,audioCtx.sampleRate),dd=b.getChannelData(0);
+    for(var i=0;i<dd.length;i++)dd[i]=(Math.random()*2-1)*Math.pow(1-i/dd.length,3);
+    var s=audioCtx.createBufferSource(),f=audioCtx.createBiquadFilter(),gn=audioCtx.createGain();s.buffer=b;f.type='bandpass';f.frequency.value=strong?180:900;
+    gn.gain.value=(strong?.35:.12)*S.vol;s.connect(f);f.connect(gn);gn.connect(audioCtx.destination);s.start(t);}catch(e){}
+}
+function pdLoop(){
+  if(!PD.on)return;PD.raf=requestAnimationFrame(pdLoop);
+  var t=performance.now()/1000-PD.t0;if(t>PD.dur){closeParade();return;}
+  var cv=$('pdCv'),dpr=Math.min(window.devicePixelRatio||1,2),W=cv.clientWidth,H=cv.clientHeight;
+  if(cv.width!==Math.round(W*dpr)||cv.height!==Math.round(H*dpr)){cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);}
+  var g=cv.getContext('2d');g.setTransform(dpr,0,0,dpr,0,0);
+  var I=skyInfo(new Date()),night=I.dl<.4;
+  // 天空與草地
+  var top=mix('#0b1430','#3d8fd6',I.dl),bot=mix('#1d2c55','#bfe4ff',I.dl);
+  var gr=g.createLinearGradient(0,0,0,H);gr.addColorStop(0,top);gr.addColorStop(1,bot);g.fillStyle=gr;g.fillRect(0,0,W,H);
+  var tall=H>W*1.2,GY=H*(tall?.56:.64);
+  if(night){g.fillStyle='#fff';SKY.stars.forEach(function(s){g.globalAlpha=.3+.5*Math.abs(Math.sin(t*1.5+s.p));g.beginPath();g.arc(s.x*W,s.y*GY*.8,s.r,0,6.283);g.fill();});g.globalAlpha=1;}
+  g.fillStyle=mix('#1a2a3e','#7cc47f',I.dl*.95);g.beginPath();g.moveTo(0,GY);for(var x=0;x<=W;x+=10)g.lineTo(x,GY-20-Math.sin(x/W*7+1)*14);g.lineTo(W,GY);g.fill();
+  g.fillStyle=mix('#203225','#8fd17f',I.dl*.95);g.fillRect(0,GY,W,H-GY);
+  // 廣場（遊行步道）
+  var cx=W/2,ry=Math.min((H-GY)*.36,W*(tall?.3:.16)),rx=Math.min(W*.42,ry*3.6),cy=GY+ry;
+  g.fillStyle=mix('#4a4038','#e8d3a8',I.dl*.9);g.beginPath();g.ellipse(cx,cy,rx+26,ry+18,0,0,6.283);g.fill();
+  g.strokeStyle='rgba(255,255,255,.25)';g.lineWidth=2;g.setLineDash([6,8]);g.beginPath();g.ellipse(cx,cy,rx,ry,0,0,6.283);g.stroke();g.setLineDash([]);
+  // 小屋：先由小放大
+  var zoom=Math.min(1,t/1.2),ez=1-Math.pow(1-zoom,3),hw=Math.min(W*.56,GY*(tall?.62:.48))*(.35+.65*ez);
+  g.save();g.globalAlpha=Math.min(1,t*2);pdHouse(g,cx,GY,hw,t,night);g.restore();
+  // 門：1.2~2.2 開；最後關
+  var closeAt=PD.dur-2.1,open=t<1.2?0:t<2.2?(t-1.2):t<closeAt?1:Math.max(0,1-(t-closeAt));
+  pdDoor(g,cx,GY,hw,open,night);
+  // 娃娃兵
+  var list=[],walk=8.2;
+  for(var i=0;i<PD.n;i++){var u=(t-2.4-i*.75)/walk;if(u<0||u>1)continue;
+    var th=-Math.PI/2-u*2*Math.PI,px=cx+rx*Math.cos(th),py=cy+ry*Math.sin(th);
+    if(u<.06)py=GY+(py-GY)*(u/.06); if(u>.94)py=GY+(py-GY)*((1-u)/.06);
+    list.push({x:px,y:py,dir:-Math.sin(th)<0?1:-1,i:i,u:u});}
+  list.sort(function(a,b){return a.y-b.y;});
+  var sh=hw*(tall?.4:.3);
+  list.forEach(function(s){var depth=.78+.4*(s.y-GY)/(2*ry),a=Math.min(1,s.u/.04,(1-s.u)/.04);
+    g.globalAlpha=Math.max(0,a);pdSoldier(g,s.x,s.y,sh*depth,t*4.2+s.i*.6,s.i===0?'drum':s.i%3===1?'horn':'flag',s.dir);g.globalAlpha=1;});
+  // 鼓聲
+  var beat=Math.floor(t*2.1);if(t>2.4&&t<closeAt&&beat!==PD.lastBeat){PD.lastBeat=beat;pdBeat(beat%4===0);}
+  // 小暖在旁邊拍手
+  if(S.pet!==false){var kx=cx-hw*.62,ky=GY-Math.max(12,hw*.07)*1.2,jy=Math.abs(Math.sin(t*5))*8;pdChick(g,kx,ky-jy,Math.max(12,hw*.07),t);}
+}
+function pdHouse(g,x,y,w,t,night){
+  var h=w*.62,wall=night?'#c9a98a':'#fbe7c6',roof=night?'#8a3a3a':'#d9534f';
+  g.fillStyle='rgba(0,0,0,.15)';g.beginPath();g.ellipse(x,y+4,w*.62,w*.06,0,0,6.283);g.fill();
+  g.fillStyle=wall;g.fillRect(x-w/2,y-h,w,h);
+  g.fillStyle='rgba(0,0,0,.06)';for(var i=1;i<6;i++)g.fillRect(x-w/2,y-h+i*h/6,w,1.5);
+  // 屋頂與鐘塔
+  g.fillStyle=roof;g.beginPath();g.moveTo(x-w*.62,y-h+4);g.lineTo(x,y-h-w*.42);g.lineTo(x+w*.62,y-h+4);g.fill();
+  g.fillStyle=night?'#6e2c2c':'#b8403c';g.fillRect(x-w*.62,y-h,w*1.24,w*.04);
+  var ty=y-h-w*.42;g.fillStyle=wall;g.fillRect(x-w*.09,ty-w*.2,w*.18,w*.22);
+  g.fillStyle=roof;g.beginPath();g.moveTo(x-w*.13,ty-w*.2);g.lineTo(x,ty-w*.36);g.lineTo(x+w*.13,ty-w*.2);g.fill();
+  var sw=Math.sin(t*6)*.5*(t<2.4?1:.3);g.save();g.translate(x,ty-w*.15);g.rotate(sw);g.fillStyle='#f2c037';g.beginPath();g.moveTo(-w*.05,w*.1);g.quadraticCurveTo(-w*.05,0,0,0);g.quadraticCurveTo(w*.05,0,w*.05,w*.1);g.fill();g.beginPath();g.arc(0,w*.11,w*.015,0,6.283);g.fill();g.restore();
+  // 山牆時鐘（真實時間）
+  var cr=w*.13,ccy=y-h-w*.16,d=new Date();
+  g.fillStyle='#fff8e7';g.beginPath();g.arc(x,ccy,cr,0,6.283);g.fill();g.strokeStyle='#c8963e';g.lineWidth=w*.018;g.stroke();
+  g.fillStyle='#5a4028';for(i=0;i<12;i++){var a=i/12*6.283;g.beginPath();g.arc(x+Math.cos(a)*cr*.78,ccy+Math.sin(a)*cr*.78,w*.007,0,6.283);g.fill();}
+  var hh=(d.getHours()%12+d.getMinutes()/60)/12*6.283-Math.PI/2,mm=(d.getMinutes()+d.getSeconds()/60)/60*6.283-Math.PI/2;
+  g.strokeStyle='#5a4028';g.lineCap='round';g.lineWidth=w*.014;g.beginPath();g.moveTo(x,ccy);g.lineTo(x+Math.cos(hh)*cr*.48,ccy+Math.sin(hh)*cr*.48);g.stroke();
+  g.lineWidth=w*.009;g.beginPath();g.moveTo(x,ccy);g.lineTo(x+Math.cos(mm)*cr*.72,ccy+Math.sin(mm)*cr*.72);g.stroke();
+  // 窗戶與花台
+  [-1,1].forEach(function(s){var wx=x+s*w*.32-w*.08,wy=y-h*.78;g.fillStyle=night?'#ffd77a':'#a9d6f2';g.fillRect(wx,wy,w*.16,w*.15);
+    if(night){g.fillStyle='rgba(255,215,122,.18)';g.beginPath();g.arc(wx+w*.08,wy+w*.075,w*.16,0,6.283);g.fill();}
+    g.strokeStyle='#fff';g.lineWidth=w*.012;g.strokeRect(wx,wy,w*.16,w*.15);g.beginPath();g.moveTo(wx+w*.08,wy);g.lineTo(wx+w*.08,wy+w*.15);g.stroke();
+    g.fillStyle='#8b5a3c';g.fillRect(wx-w*.01,wy+w*.15,w*.18,w*.03);
+    for(var k=0;k<4;k++){g.fillStyle=['#ff6b8a','#ffd54a','#ff8a3d','#c77dff'][k];g.beginPath();g.arc(wx+w*.02+k*w*.04,wy+w*.145,w*.016,0,6.283);g.fill();}});
+}
+function pdDoor(g,x,y,w,open,night){
+  var dw=w*.3,dh=w*.42,dx=x-dw/2,dy=y-dh;
+  g.fillStyle='#6b4a32';g.beginPath();g.moveTo(dx-w*.02,y);g.lineTo(dx-w*.02,dy+dw*.5);g.arc(x,dy+dw*.5,dw/2+w*.02,Math.PI,0);g.lineTo(dx+dw+w*.02,y);g.fill();
+  g.fillStyle=night?'#ffcf70':'#2a1c14';g.beginPath();g.moveTo(dx,y);g.lineTo(dx,dy+dw*.5);g.arc(x,dy+dw*.5,dw/2,Math.PI,0);g.lineTo(dx+dw,y);g.fill();
+  if(night){g.fillStyle='rgba(255,207,112,'+(.25*open)+')';g.beginPath();g.ellipse(x,y+w*.05,dw,w*.07,0,0,6.283);g.fill();}
+  var lw=dw/2*Math.cos(open*Math.PI*.46);
+  g.save();g.beginPath();g.moveTo(dx,y);g.lineTo(dx,dy+dw*.5);g.arc(x,dy+dw*.5,dw/2,Math.PI,0);g.lineTo(dx+dw,y);g.clip();
+  g.fillStyle='#a8673c';g.fillRect(dx,dy,lw,dh);g.fillRect(dx+dw-lw,dy,lw,dh);
+  g.strokeStyle='#7a4a2a';g.lineWidth=w*.01;g.strokeRect(dx+lw*.15,dy+dh*.35,lw*.7,dh*.25);g.strokeRect(dx+dw-lw*.85,dy+dh*.35,lw*.7,dh*.25);
+  g.fillStyle='#f2c037';if(lw>3){g.beginPath();g.arc(dx+lw*.85,dy+dh*.62,w*.012,0,6.283);g.arc(dx+dw-lw*.85,dy+dh*.62,w*.012,0,6.283);g.fill();}
+  g.restore();
+}
+function pdSoldier(g,x,y,s,ph,kind,dir){ // y = 腳底, s = 身高
+  var sw=Math.sin(ph),bob=Math.abs(Math.cos(ph))*s*.03;
+  g.save();g.translate(x,y-bob);g.scale(dir,1);
+  g.fillStyle='rgba(0,0,0,.18)';g.beginPath();g.ellipse(0,bob,s*.2,s*.04,0,0,6.283);g.fill();
+  // 腿
+  g.fillStyle='#2f4fa8';[-1,1].forEach(function(k){g.save();g.translate(k*s*.06,-s*.36);g.rotate(k*sw*.35);g.fillRect(-s*.045,0,s*.09,s*.33);g.fillStyle='#1b1b1b';g.fillRect(-s*.055,s*.3,s*.12,s*.06);g.fillStyle='#2f4fa8';g.restore();});
+  // 身體
+  g.fillStyle='#d6303a';g.beginPath();g.moveTo(-s*.14,-s*.38);g.lineTo(-s*.13,-s*.66);g.quadraticCurveTo(0,-s*.71,s*.13,-s*.66);g.lineTo(s*.14,-s*.38);g.closePath();g.fill();
+  g.strokeStyle='#fff';g.lineWidth=s*.03;g.beginPath();g.moveTo(-s*.12,-s*.65);g.lineTo(s*.12,-s*.4);g.moveTo(s*.12,-s*.65);g.lineTo(-s*.12,-s*.4);g.stroke();
+  g.fillStyle='#1b1b1b';g.fillRect(-s*.145,-s*.42,s*.29,s*.04);g.fillStyle='#f2c037';g.fillRect(-s*.03,-s*.42,s*.06,s*.04);
+  // 後手臂
+  g.save();g.translate(-s*.12,-s*.64);g.rotate(-sw*.4);g.fillStyle='#b8252e';g.fillRect(-s*.035,0,s*.07,s*.22);g.fillStyle='#fff';g.beginPath();g.arc(0,s*.23,s*.035,0,6.283);g.fill();g.restore();
+  // 頭
+  g.fillStyle='#ffd9b8';g.beginPath();g.arc(0,-s*.77,s*.11,0,6.283);g.fill();
+  g.fillStyle='#3a2a1a';g.beginPath();g.arc(s*.045,-s*.775,s*.014,0,6.283);g.arc(-s*.02,-s*.775,s*.014,0,6.283);g.fill();
+  g.fillStyle='rgba(255,110,110,.55)';g.beginPath();g.arc(s*.07,-s*.735,s*.022,0,6.283);g.arc(-s*.05,-s*.735,s*.022,0,6.283);g.fill();
+  // 高帽
+  g.fillStyle='#1b1b1b';g.beginPath();g.moveTo(-s*.1,-s*.83);g.lineTo(-s*.09,-s*1.02);g.quadraticCurveTo(0,-s*1.08,s*.09,-s*1.02);g.lineTo(s*.1,-s*.83);g.closePath();g.fill();
+  g.fillStyle='#f2c037';g.beginPath();g.arc(s*.02,-s*.9,s*.025,0,6.283);g.fill();g.fillRect(-s*.1,-s*.84,s*.2,s*.02);
+  g.strokeStyle='#f2c037';g.lineWidth=s*.012;g.beginPath();g.arc(0,-s*.77,s*.105,.3,2.84);g.stroke();
+  // 樂器
+  if(kind==='drum'){g.fillStyle='#fff';g.fillRect(s*.06,-s*.56,s*.2,s*.15);g.fillStyle='#2f4fa8';g.fillRect(s*.06,-s*.56,s*.2,s*.03);g.fillRect(s*.06,-s*.44,s*.2,s*.03);
+    g.strokeStyle='#d6303a';g.lineWidth=s*.012;g.beginPath();for(var i=0;i<4;i++){g.moveTo(s*.06+i*s*.05,-s*.53);g.lineTo(s*.085+i*s*.05,-s*.44);}g.stroke();
+    var hit=Math.max(0,Math.sin(ph*2));g.strokeStyle='#8b5a3c';g.lineWidth=s*.018;g.beginPath();g.moveTo(s*.1,-s*.62);g.lineTo(s*.16,-s*.56-hit*s*.08);g.moveTo(s*.2,-s*.62);g.lineTo(s*.24,-s*.58+hit*s*.03);g.stroke();}
+  else if(kind==='horn'){g.fillStyle='#f2c037';g.fillRect(s*.06,-s*.72,s*.2,s*.03);g.beginPath();g.moveTo(s*.25,-s*.705);g.lineTo(s*.33,-s*.75);g.lineTo(s*.33,-s*.66);g.fill();g.fillRect(s*.12,-s*.69,s*.05,s*.05);}
+  else{g.strokeStyle='#8b5a3c';g.lineWidth=s*.02;g.beginPath();g.moveTo(s*.14,-s*.4);g.lineTo(s*.14,-s*1.12);g.stroke();
+    var fw=Math.sin(ph*1.3)*s*.03;g.fillStyle='#ffd54a';g.beginPath();g.moveTo(s*.14,-s*1.12);g.quadraticCurveTo(s*.26,-s*1.12+fw,s*.36,-s*1.08);g.lineTo(s*.36,-s*.96);g.quadraticCurveTo(s*.26,-s*1.0+fw,s*.14,-s*.97);g.fill();
+    g.fillStyle='#d6303a';g.beginPath();g.arc(s*.25,-s*1.04,s*.03,0,6.283);g.fill();}
+  // 前手臂
+  g.save();g.translate(s*.12,-s*.64);g.rotate(kind==='flag'?-.2:kind==='horn'?-1.3:-.6);g.fillStyle='#d6303a';g.fillRect(-s*.035,0,s*.07,s*.2);g.fillStyle='#fff';g.beginPath();g.arc(0,s*.21,s*.035,0,6.283);g.fill();g.restore();
+  g.restore();
+}
+function pdChick(g,x,y,r,t){
+  g.fillStyle='rgba(0,0,0,.15)';g.beginPath();g.ellipse(x,y+r*1.2,r*.8,r*.18,0,0,6.283);g.fill();
+  g.save();g.translate(x,y);g.scale(-1,1);
+  g.fillStyle='#ffd54a';g.beginPath();g.arc(0,0,r,0,6.283);g.fill();g.fillStyle='#ffe58a';g.beginPath();g.arc(-r*.2,-r*.25,r*.45,0,6.283);g.fill();
+  g.strokeStyle='#f0a830';g.lineWidth=2;g.beginPath();g.moveTo(0,-r);g.quadraticCurveTo(r*.15,-r*1.5,r*.38,-r*1.25);g.stroke();
+  g.fillStyle='#f5c034';g.save();g.translate(-r*.55,r*.05);g.rotate(-1+Math.sin(t*12)*.6);g.beginPath();g.ellipse(0,0,r*.4,r*.24,0,0,6.283);g.fill();g.restore();
+  g.fillStyle='#ff8a3d';g.beginPath();g.moveTo(r*.85,-r*.06);g.lineTo(r*1.28,r*.08);g.lineTo(r*.85,r*.24);g.fill();
+  g.strokeStyle='#3a2a1a';g.lineWidth=2;g.beginPath();g.arc(r*.42,-r*.15,r*.13,3.4,6.0);g.stroke();
+  g.fillStyle='rgba(255,120,120,.5)';g.beginPath();g.arc(r*.28,r*.16,r*.14,0,6.283);g.fill();
+  g.strokeStyle='#ff8a3d';g.lineWidth=2.2;g.beginPath();g.moveTo(-r*.25,r*.9);g.lineTo(-r*.25,r*1.2);g.moveTo(r*.25,r*.9);g.lineTo(r*.25,r*1.2);g.stroke();
+  g.restore();
+}
+$('parade').addEventListener('click',closeParade);
+$('pdTest').addEventListener('click',function(){parade(true);});
 requestAnimationFrame(skyLoop);
 $('tSeg').addEventListener('click',function(e){var m=e.target.getAttribute('data-m');if(!m)return;tMode=m;var b=$('tSeg').children;for(var i=0;i<b.length;i++)b[i].className=b[i].getAttribute('data-m')===m?'on':'';$('cdBox').style.display=m==='cd'?'':'none';$('swBox').style.display=m==='sw'?'':'none';});
 $('cdPreset').innerHTML=CDP.map(function(p,i){return '<button data-p="'+i+'">'+p[0]+' '+p[1]+'<span>'+sayLen(p[2])+'</span></button>';}).join('');
