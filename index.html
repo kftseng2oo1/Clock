@@ -125,10 +125,11 @@ input[type=time],input[type=text],input[type=number],select{width:100%;backgroun
 .ov .row{justify-content:center}
 .toast{position:fixed;left:50%;bottom:110px;transform:translateX(-50%);background:#2b3a58;color:#fff;padding:10px 16px;border-radius:12px;font-size:14px;opacity:0;transition:.3s;pointer-events:none;z-index:30}
 .toast.on{opacity:1}
-#petPop{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 96px);transform:translateX(-50%) translateY(12px);background:#fffaf0;color:#4a3a28;border-radius:18px;padding:12px 14px;box-shadow:0 8px 28px rgba(0,0,0,.3);z-index:40;display:flex;align-items:center;gap:10px;opacity:0;pointer-events:none;transition:.25s;width:min(360px,92vw)}
+#petPop{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 96px);transform:translateX(-50%) translateY(12px);background:#fffaf0;color:#4a3a28;border-radius:18px;padding:12px 14px;box-shadow:0 8px 28px rgba(0,0,0,.3);z-index:40;display:flex;align-items:center;flex-wrap:wrap;gap:8px 10px;opacity:0;pointer-events:none;transition:.25s;width:min(380px,94vw)}
 #petPop.on{opacity:1;pointer-events:auto;transform:translateX(-50%)}
-#petPop span{font-size:15px;flex:1}
-#petPop a{flex:none;background:linear-gradient(135deg,#ff9f43,#ff6b6b);color:#fff;text-decoration:none;font-weight:700;font-size:15px;padding:9px 13px;border-radius:12px;white-space:nowrap}
+#petPop span{font-size:15px;flex:1 1 100%}
+#petPop a.sk{background:linear-gradient(135deg,#4fc3f7,#7e57c2)}
+#petPop a{flex:1;text-align:center;background:linear-gradient(135deg,#ff9f43,#ff6b6b);color:#fff;text-decoration:none;font-weight:700;font-size:15px;padding:9px 13px;border-radius:12px;white-space:nowrap}
 #amb .play{position:absolute;z-index:3;right:16px;bottom:calc(env(safe-area-inset-bottom) + 18px);background:rgba(255,255,255,.85);color:#4a3a28;text-decoration:none;font-size:15px;font-weight:700;padding:9px 14px;border-radius:20px}
 .speaking{animation:pulse 1.2s infinite}
 @keyframes pulse{50%{opacity:.5}}
@@ -139,7 +140,7 @@ input[type=time],input[type=text],input[type=number],select{width:100%;backgroun
 
 <!-- 首頁 -->
 <div class="pg on" id="pg-home">
-  <div class="top"><span id="loc">📍 定位中…</span><span><button id="gameBtn" title="陪小暖玩">🎮</button><button id="dimBtn" title="夜間調暗">🌙</button><button id="speakNow" title="立即報時">🔊</button></span></div>
+  <div class="top"><span id="loc">📍 定位中…</span><span><button id="gameBtn" title="陪小暖玩">🎮</button><button id="slideBtn" title="小暖滑滑樂">🏂</button><button id="dimBtn" title="夜間調暗">🌙</button><button id="speakNow" title="立即報時">🔊</button></span></div>
   <div class="clock" id="clockBox">
     <canvas id="sky"></canvas>
     <div class="time" id="time">--:--<small id="sec">--</small></div>
@@ -328,9 +329,9 @@ input[type=time],input[type=text],input[type=number],select{width:100%;backgroun
   <div class="hint" id="ringAuto" style="margin-top:16px;font-size:14px"></div>
 </div>
 
-<div id="amb"><canvas id="skyBig"></canvas><button class="ax" id="ambX">✕</button><div class="at" id="ambT">--:--</div><div class="ad" id="ambD"></div><div class="say" id="ambSay"></div><a class="play" id="ambPlay" href="game.html">🎮 陪小暖玩</a></div>
+<div id="amb"><canvas id="skyBig"></canvas><button class="ax" id="ambX">✕</button><div class="at" id="ambT">--:--</div><div class="ad" id="ambD"></div><div class="say" id="ambSay"></div><a class="play" id="ambPlay" href="game.html">🎮 陪小暖玩</a><a class="play" id="ambPlay2" style="bottom:calc(env(safe-area-inset-bottom) + 66px)" href="https://kftseng2oo1.github.io/warmmy/?from=clock">🏂 小暖滑滑樂</a></div>
 <div id="parade"><canvas id="pdCv"></canvas><div class="pt" id="pdT"></div><div class="ps" id="pdS"></div><div class="ph">點一下關閉</div></div>
-<div id="petPop"><span id="petPopT">嗨～我是小暖！</span><a href="game.html">🎮 陪小暖玩</a></div>
+<div id="petPop"><span id="petPopT">嗨～我是小暖！</span><a href="game.html">🎮 天氣大冒險</a><a class="sk" href="https://kftseng2oo1.github.io/warmmy/?from=clock">🏂 小暖滑滑樂</a></div>
 
 <div class="toast" id="toast"></div>
 
@@ -1324,9 +1325,10 @@ $('clockBox').addEventListener('click',function(e){
   if(S.pet!==false&&Math.abs(px-SKY.pet.x)<.08&&(e.clientY-r.top)/r.height>.6){petJump();petPop(pick(PET_TALK));return;}
   openAmb();
 });
-$('amb').addEventListener('click',function(e){if(e.target.id==='ambX'){closeAmb();return;}if(e.target.id==='ambPlay')return;petJump();petSay();});
+$('amb').addEventListener('click',function(e){if(e.target.id==='ambX'){closeAmb();return;}if(e.target.id==='ambPlay'||e.target.id==='ambPlay2')return;petJump();petSay();});
 var popT;function petPop(m){$('petPopT').textContent=m+' 要不要一起玩？';$('petPop').className='on';clearTimeout(popT);popT=setTimeout(function(){$('petPop').className='';},5000);}
 $('gameBtn').addEventListener('click',function(){location.href='game.html';});
+$('slideBtn').addEventListener('click',function(){location.href='https://kftseng2oo1.github.io/warmmy/?from=clock';});
 ['touchstart','mousedown','keydown','scroll'].forEach(function(ev){document.addEventListener(ev,function(){if(!ambOn)lastAct=Date.now();},true);});
 /* ========== 報時動畫：小屋娃娃兵遊行（廣場鐘） ========== */
 var PD={on:false,t0:0,n:0,raf:0};
