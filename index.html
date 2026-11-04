@@ -268,7 +268,10 @@ input[type=time],input[type=text],input[type=number],select{width:100%;backgroun
     <h3>聲音</h3>
     <div class="set">說話風格<select id="sStyle"><option value="std">標準播報</option><option value="agong">👴 阿公講古</option><option value="ama">👵 阿嬤叮嚀</option><option value="mix">🎲 隨機輪流</option></select></div>
     <div class="set">人聲<select id="sVsrc"><option value="female">曉臻・溫柔女聲</option><option value="female2">曉雨・活潑女聲</option><option value="male">雲哲・沉穩男聲</option><option value="agong">👴 阿公（AI 聲音）</option></select></div>
-    <div id="agongBox" style="display:none"><label class="f">阿公聲音通行碼（和「阿公說故事」App 填的一樣）</label><input type="text" id="sVtoken" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="arcar 沒設 VOICE_TOKEN 就留空"></div>
+    <div id="agongBox" style="display:none;background:rgba(255,200,120,.12);border-radius:12px;padding:10px;margin:6px 0">
+      <label class="f">🔑 阿公聲音通行碼（和「阿公說故事」App 填的一樣）</label><input type="text" id="sVtoken" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="在這裡輸入通行碼">
+      <div id="agongTip" class="hint" style="margin-top:6px"></div>
+      <button class="btn" id="agongUse" style="display:none;margin-top:6px">👴 人聲也換成阿公本人的聲音</button></div>
     <div class="set">離線備用語音<select id="sVoice"></select></div>
     <div class="set">語速<select id="sRate"><option value="0.8">慢</option><option value="0.95">稍慢</option><option value="1">正常</option><option value="1.15">稍快</option></select></div>
     <div class="set">音量<select id="sVol"><option value="0.5">小</option><option value="0.8">中</option><option value="1">大</option></select></div>
@@ -580,6 +583,11 @@ function speakM(text,st,kind){speak(text,function(){setTimeout(function(){if(kin
 var PROXY='https://arcar.kftseng2oo1.workers.dev';
 var VOICES=[['female','曉臻・溫柔女聲'],['female2','曉雨・活潑女聲'],['male','雲哲・沉穩男聲'],['agong','👴 阿公（AI 聲音）']];
 function voiceName(v){for(var i=0;i<VOICES.length;i++)if(VOICES[i][0]===v)return VOICES[i][1];return '手機內建語音';}
+function updAgongBox(){var st=S.style,v=S.vsrc==='agong',show=v||st==='agong'||st==='mix';
+  $('agongBox').style.display=show?'block':'none';if(!show)return;
+  $('agongUse').style.display=v?'none':'block';
+  $('agongTip').textContent=v?(S.vtoken?'已填通行碼，報時會用阿公本人的 AI 聲音。':'還沒填通行碼：沒填的話，阿公聲音會失敗並改用男聲。')
+    :'目前「說話風格」是阿公講古，但「人聲」不是阿公本人。按下面的按鈕，報時就會用阿公的 AI 聲音（需要通行碼）。';}
 function showVoiceName(){var e=$('qVoiceName');if(e)e.textContent='目前人聲：'+voiceName(S.vsrc);}
 var ttsCache={},ttsKeys=[],curSrc=null,speakSeq=0;
 function stopSpeech(){speakSeq++;stopMusic();if(curSrc){try{curSrc.stop();}catch(e){}curSrc=null;}if(synth)synth.cancel();$('speakNow').className='';}
@@ -1265,7 +1273,7 @@ $('wxRefresh').addEventListener('click',function(){$('wxD').textContent='更新�
 $('qSpeak').addEventListener('click',function(){var st=pickStyle();speakM(quoteSt(st),st,'quote');});
 $('qVoice').addEventListener('click',function(){
   var i=0;for(var k=0;k<VOICES.length;k++)if(VOICES[k][0]===S.vsrc)i=k;
-  S.vsrc=VOICES[(i+1)%VOICES.length][0];save('set',S);$('sVsrc').value=S.vsrc;$('agongBox').style.display=S.vsrc==='agong'?'block':'none';
+  S.vsrc=VOICES[(i+1)%VOICES.length][0];save('set',S);$('sVsrc').value=S.vsrc;updAgongBox();
   showVoiceName();toast('換成 '+voiceName(S.vsrc));
   var st=S.vsrc==='agong'?'agong':pickStyle();speakM(quoteSt(st),st,'quote');
 });
@@ -1330,16 +1338,19 @@ $('snooze').addEventListener('click',function(){
   for(i=0;i<24;i++){o=document.createElement('option');o.value=i;o.textContent=pad(i)+':00';qs.appendChild(o);qe.appendChild(o.cloneNode(true));}
   CITIES.forEach(function(c){o=document.createElement('option');o.value=c[0];o.textContent=c[1];$('sCity').appendChild(o);});
   $('sChime').value=S.chime;$('sParade').value=S.parade||'on';qs.value=S.qs;qe.value=S.qe;$('sWx').checked=S.wx;$('sCheer').checked=S.cheer;$('sBell').checked=S.bell;
-  $('sLead').value=S.lead;$('sRate').value=S.rate;$('sMusic').value=S.music||'off';$('sMwhen').value=S.mwhen||'all';$('sMlen').value=S.mlen;$('customBox').style.display=S.music==='custom'?'block':'none';$('sVsrc').value=S.vsrc||'female';$('sVtoken').value=S.vtoken||'';$('agongBox').style.display=S.vsrc==='agong'?'block':'none';$('sStyle').value=S.style||'std';$('sVol').value=S.vol;$('sCity').value=S.city;$('sGid').value=S.gid;$('sWake').checked=S.wake;$('sAuto').value=S.auto==null?60:S.auto;$('sAmb').value=S.amb==null?2:S.amb;$('sPet').checked=S.pet!==false;
+  $('sLead').value=S.lead;$('sRate').value=S.rate;$('sMusic').value=S.music||'off';$('sMwhen').value=S.mwhen||'all';$('sMlen').value=S.mlen;$('customBox').style.display=S.music==='custom'?'block':'none';$('sVsrc').value=S.vsrc||'female';$('sVtoken').value=S.vtoken||'';updAgongBox();$('sStyle').value=S.style||'std';$('sVol').value=S.vol;$('sCity').value=S.city;$('sGid').value=S.gid;$('sWake').checked=S.wake;$('sAuto').value=S.auto==null?60:S.auto;$('sAmb').value=S.amb==null?2:S.amb;$('sPet').checked=S.pet!==false;
   function upd(){
     var oldCity=S.city;
     S.chime=+$('sChime').value;S.parade=$('sParade').value;S.qs=+qs.value;S.qe=+qe.value;S.wx=$('sWx').checked;S.cheer=$('sCheer').checked;S.bell=$('sBell').checked;
-    S.lead=+$('sLead').value;S.voice=$('sVoice').value;S.rate=+$('sRate').value;S.music=$('sMusic').value;S.mwhen=$('sMwhen').value;S.mlen=+$('sMlen').value;$('customBox').style.display=S.music==='custom'?'block':'none';S.vsrc=$('sVsrc').value;S.vtoken=$('sVtoken').value.trim();$('agongBox').style.display=S.vsrc==='agong'?'block':'none';showVoiceName();S.style=$('sStyle').value;S.vol=+$('sVol').value;S.city=$('sCity').value;S.gid=$('sGid').value.trim();S.wake=$('sWake').checked;S.auto=+$('sAuto').value;S.amb=+$('sAmb').value;S.pet=$('sPet').checked;
-    save('set',S);if(oldCity!==S.city)fetchWx();if(S.wake)wake();else if(wakeLock){wakeLock.release();wakeLock=null;}
+    S.lead=+$('sLead').value;S.voice=$('sVoice').value;S.rate=+$('sRate').value;S.music=$('sMusic').value;S.mwhen=$('sMwhen').value;S.mlen=+$('sMlen').value;$('customBox').style.display=S.music==='custom'?'block':'none';S.vsrc=$('sVsrc').value;S.vtoken=$('sVtoken').value.trim();updAgongBox();showVoiceName();S.style=$('sStyle').value;S.vol=+$('sVol').value;S.city=$('sCity').value;S.gid=$('sGid').value.trim();S.wake=$('sWake').checked;S.auto=+$('sAuto').value;S.amb=+$('sAmb').value;S.pet=$('sPet').checked;
+    updAgongBox();save('set',S);if(oldCity!==S.city)fetchWx();if(S.wake)wake();else if(wakeLock){wakeLock.release();wakeLock=null;}
   }
   var ids=['sParade','sMusic','sMwhen','sMlen','sVsrc','sVtoken','sStyle','sChime','sQs','sQe','sWx','sCheer','sBell','sLead','sVoice','sRate','sVol','sCity','sGid','sWake','sAuto','sAmb','sPet'];
   ids.forEach(function(id){$(id).addEventListener('change',upd);});
   $('sTest').addEventListener('click',function(){upd();announce(false);});
+  $('sVtoken').addEventListener('input',function(){S.vtoken=$('sVtoken').value.trim();save('set',S);updAgongBox();});
+  $('agongUse').addEventListener('click',function(){$('sVsrc').value='agong';upd();showVoiceName&&showVoiceName();toast('人聲換成 👴 阿公（AI 聲音）');
+    if(!S.vtoken)$('sVtoken').focus();});
 })();
 
 /* ========== 啟動 ========== */
